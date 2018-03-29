@@ -1,0 +1,43 @@
+<application>
+    <name>Object tracking</name>
+
+    <dependencies>
+        <port>/icub/camcalib/left/out</port>
+        <port>/icub/camcalib/right/out</port>
+    </dependencies>
+
+    <module>
+        <name>objectTracking</name>
+        <tag>objectTracking</tag>
+        <node>/jonas</node>
+    </module>
+
+    <module>
+        <name>yarpview</name>
+        <parameters>--name /trackingOutput --x 320 --y 350 </parameters>
+        <node>/icub16</node>
+        <tag>trackingOutput</tag>
+    </module>
+
+
+    <!-- Connections of the application -->
+    <connection>
+        <from>/icub/camcalib/left/out</from>
+        <to>/objectTracking/inputImagePort:i </to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/icub/camcalib/left/out</from>
+        <to>/objectTracking/templateImage:i</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/objectTracking/trackerOutputPort:o </from>
+        <to>trackingOutput</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+</application>
+

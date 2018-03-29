@@ -76,7 +76,7 @@ bool objectTrackingModule::configure(yarp::os::ResourceFinder &rf) {
 
     attach(handlerPort);                  // attach to port
 
-    rThread = new objectTrackingRateThread();
+    rThread = new objectTrackingRateThread(rf);
     rThread->setName(this->getName());
     if(!rThread->start()){
         yError("Unable to start the thread");

@@ -38,12 +38,16 @@ using namespace std;
 objectTrackingRateThread::objectTrackingRateThread() : RateThread(THRATE) {
     robot = "icub";
     trackerType = "CSRT";
+    enableSaccade = false;
+
 }
 
 objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf) : RateThread(THRATE) {
     trackerType = rf.check("trackerType",
             Value("CSRT"),
             "tracker type (string)").asString();
+
+    enableSaccade = rf.check("saccade", Value(false)).asBool();
 
 }
 
@@ -76,9 +80,14 @@ bool objectTrackingRateThread::threadInit() {
     setTracker();
     trackingMode = false;
 
-    yInfo("Initialization of the processing thread correctly ended");
 
-    return true;
+    previousImagePosX =.0;
+    previousImagePosY = 0;
+    previousPosZ = 0;
+
+    yInfo("Initialization of the processing thread correctly ended");
+    const bool ret = openIkinGazeCtrl();
+    return ret;
 }
 
 void objectTrackingRateThread::setName(string str) {
@@ -100,34 +109,40 @@ void objectTrackingRateThread::run() {
 
     if(inputImagePort.getInputCount() && trackingMode){
 
-
-        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
+        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read();
         cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
+
+        //iGaze->waitMotionDone();                        // wait until the operation is done
 
         const bool successTracking = tracker->update(inputImageMat, currentTrackRect);
 
-        if (successTracking){
+
+        if (successTracking ){
             //currentTrackRect = objectTemplateRectToTrack;
+            trackIkinGazeCtrl(currentTrackRect);
             cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar( 255, 0, 0 ), 2, 1 );
+        }
             // Display frame.
             IplImage outputImageTrackerIPL = (IplImage) inputImageMat;
 
-            yarp::sig::ImageOf<yarp::sig::PixelRgb> * outputTrackImageIPL = &trackerOutputPort.prepare();
+            yarp::sig::ImageOf<yarp::sig::PixelBgr> * outputTrackImage = &trackerOutputPort.prepare();
             inputImage->resize(outputImageTrackerIPL.width, outputImageTrackerIPL.height);
 
-            outputTrackImageIPL->wrapIplImage(&outputImageTrackerIPL);
+            outputTrackImage->wrapIplImage(&outputImageTrackerIPL);
             trackerOutputPort.write();
-
-        }
-
 
     }
 }
 
 
 void objectTrackingRateThread::threadRelease() {
-    // nothing
+    iGaze->stopControl();
+    iGaze->restoreContext(ikinGazeCtrl_Startcontext);
+    clientGaze->close();
 
+    templateInputPort.close();
+    inputImagePort.close();
+    trackerOutputPort.close();
 }
 
 bool objectTrackingRateThread::setTemplateFromImage() {
@@ -169,6 +184,83 @@ void objectTrackingRateThread::setTracker() {
     if (trackerType == "MOSSE")
         tracker = TrackerMOSSE::create();
 
+}
+
+bool objectTrackingRateThread::openIkinGazeCtrl() {
+
+
+    //---------------------------------------------------------------
+    yDebug("Opening the connection to the iKinGaze");
+    Property optGaze; //("(device gazecontrollerclient)");
+    optGaze.put("device","gazecontrollerclient");
+    optGaze.put("remote","/iKinGazeCtrl");
+    optGaze.put("local","/objectTracking/gaze");
+
+    clientGaze = new PolyDriver();
+    clientGaze->open(optGaze);
+    iGaze = nullptr;
+    yDebug("Connecting to the iKinGaze");
+    if (!clientGaze->isValid()) {
+        return false;
+    }
+
+    clientGaze->view(iGaze);
+    iGaze->storeContext(&ikinGazeCtrl_Startcontext);
+
+    iGaze->blockNeckRoll(0.0);
+
+
+    iGaze->setSaccadesMode(enableSaccade);
+
+    //Set trajectory time:
+    iGaze->setNeckTrajTime(0.9);
+    iGaze->setEyesTrajTime(0.5);
+    iGaze->setTrackingMode(true);
+    iGaze->setVORGain(1.3);
+    iGaze->setOCRGain(1.0);
+
+    yDebug("Initialization of iKingazeCtrl completed");
+    return true;
+}
+
+bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
+
+
+    // Calcul the center of the Rectangle
+    const double imagePositionX = t_trackZone.tl().x + (t_trackZone.width / 2);
+    const double imagePositionY = t_trackZone.tl().y + (t_trackZone.height / 2);
+
+    yarp::sig::Vector imageFramePosition(2);
+    yarp::sig::Vector rootFramePosition(3);
+
+    imageFramePosition[0] = imagePositionX;
+    imageFramePosition[1] = imagePositionY;
+
+    // On the 3D frame reference of the robot the X axis is the depth
+    const bool ret = iGaze->get3DPoint(0, imageFramePosition, 1.0 , rootFramePosition );
+
+    // Calcul the Euclidian distance in image plane
+    const double distancePreviousCurrent = sqrt(pow((imagePositionX - previousImagePosX),2)  + pow(( imagePositionY - previousImagePosY ),2));
+
+    yInfo("Distance is %f", distancePreviousCurrent);
+
+    if(ret && distancePreviousCurrent > 30 ){
+
+        // Storing the previous coordinate in the Robot frame reference
+
+        previousImagePosX = imagePositionX;
+        previousImagePosY = imagePositionY;
+        yInfo("Position  is %f %f %f", rootFramePosition[0], rootFramePosition[1], rootFramePosition[2]);
+
+        iGaze->lookAtFixationPoint(rootFramePosition);
+
+    }
+
+
+
+
+
+    return false;
 }
 
 

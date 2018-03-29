@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 11)
 FIND_PACKAGE(YARP REQUIRED)
 find_package(OpenCV REQUIRED)
 
+link_directories ( ${OpenCV_LIB_DIR} )
+
 #search for includes
 INCLUDE_DIRECTORIES(
         ${PROJECT_SOURCE_DIR}/include

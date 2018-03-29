@@ -58,8 +58,17 @@ private:
 
     yarp::os::BufferedPort <yarp::os::Bottle> outputPort;                                // port necessary to send the gaze command to the gazeArbiter
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateInputPort;                                // port necessary to send the gaze command to the gazeArbiter
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelRgb> > trackerOutputPort;                                // port necessary to send the gaze command to the gazeArbiter
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // port necessary to send the gaze command to the gazeArbiter
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;                                // port necessary to send the gaze command to the gazeArbiter
+
+
+    //iKinGazeCtrl parameters
+    int ikinGazeCtrl_Startcontext;
+    yarp::dev::PolyDriver* clientGaze;
+    yarp::dev::IGazeControl *iGaze;
+    bool enableSaccade;
+
+    double previousImagePosX, previousImagePosY, previousPosZ;
 
 
 public:
@@ -124,6 +133,10 @@ public:
     bool setTemplateFromImage();
 
     void setTracker();
+
+    bool openIkinGazeCtrl();
+
+    bool trackIkinGazeCtrl(const cv:: Rect2d);
 
 
 };

@@ -9,6 +9,8 @@ using namespace yarp::sig;
 int main(int argc, char *argv[]) {
 
     Network yarp;
+    yarp.init();
+
     objectTrackingModule module;
 
     ResourceFinder rf;
