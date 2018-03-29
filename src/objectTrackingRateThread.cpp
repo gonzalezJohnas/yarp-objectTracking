@@ -65,20 +65,28 @@ objectTrackingRateThread::~objectTrackingRateThread() {
 
 bool objectTrackingRateThread::threadInit() {
 
-    if(!templateInputPort.open(this->name+"/templateImage:i")){
+    if(!templateImageInputPort.open(this->name+"/templateImage:i")){
         yInfo("Unable to open /templateImage:i port");
         return false;
     }
 
-    if(!inputImagePort.open(this->name+"/inputImagePort:i")){
-        yInfo("Unable to open /inputImagePort:i port");
+    if(!inputImagePort.open(this->name+"/inputImage:i")){
+        yInfo("Unable to open /inputImage:i port");
         return false;
     }
 
-    if(!trackerOutputPort.open(this->name+"/trackerOutputPort:o")){
+    if(!trackerOutputPort.open(this->name+"/trackerOutput:o")){
         yInfo("Unable to open /trackerOutputPort:o port");
         return false;
     }
+
+    if(!templateImageOutputPort.open(this->name+"/templateImageOutput:o")){
+        yInfo("Unable to open /templateImageOutput:o port");
+        return false;
+    }
+
+
+
 
 
     setTracker();
@@ -116,8 +124,6 @@ void objectTrackingRateThread::run() {
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read();
         cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
 
-        //iGaze->waitMotionDone();                        // wait until the operation is done
-
         const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
 
 
@@ -125,7 +131,21 @@ void objectTrackingRateThread::run() {
             //currentTrackRect = ROITemplateToTrack;
             trackIkinGazeCtrl(currentTrackRect);
             cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar( 255, 0, 0 ), 2, 1 );
+            cv::Mat outputTemplate = inputImageMat(currentTrackRect);
+
+            if(templateImageOutputPort.getOutputCount()){
+                // Display frame.
+                IplImage outputTemplateIPL = (IplImage) outputTemplate;
+
+                yarp::sig::ImageOf<yarp::sig::PixelBgr> *outputTrackImage = &templateImageOutputPort.prepare();
+
+                outputTrackImage->wrapIplImage(&outputTemplateIPL);
+                templateImageOutputPort.write();
+            }
+
         }
+
+        if(trackerOutputPort.getOutputCount()){
             // Display frame.
             IplImage outputImageTrackerIPL = (IplImage) inputImageMat;
 
@@ -134,6 +154,12 @@ void objectTrackingRateThread::run() {
 
             outputTrackImage->wrapIplImage(&outputImageTrackerIPL);
             trackerOutputPort.write();
+        }
+
+
+
+
+
 
     }
 }
@@ -144,15 +170,15 @@ void objectTrackingRateThread::threadRelease() {
     iGaze->restoreContext(ikinGazeCtrl_Startcontext);
     clientGaze->close();
 
-    templateInputPort.close();
+    templateImageInputPort.close();
     inputImagePort.close();
     trackerOutputPort.close();
 }
 
 bool objectTrackingRateThread::setTemplateFromImage() {
 
-    if(templateInputPort.getInputCount() && inputImagePort.getInputCount()){
-        ImageOf<yarp::sig::PixelBgr> *templateImage = templateInputPort.read(true);
+    if(templateImageInputPort.getInputCount() && inputImagePort.getInputCount()){
+        ImageOf<yarp::sig::PixelBgr> *templateImage = templateImageInputPort.read(true);
         const cv::Mat templateMat = cv::cvarrToMat(templateImage->getIplImage());
 
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
@@ -272,6 +298,9 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 }
 
 bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv::Rect2d t_ROIToTrack) {
+
+
+    currentTrackRect = t_ROIToTrack;
     if(trackerType == "KF-EBT"){
 
         kalmanFilterEnsembleBasedTracker.initTrackers(t_image, t_ROIToTrack);

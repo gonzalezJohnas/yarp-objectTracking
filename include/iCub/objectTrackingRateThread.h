@@ -58,10 +58,11 @@ private:
     cv::Rect2d ROITemplateToTrack, currentTrackRect;
     bool trackingMode;
 
-    yarp::os::BufferedPort <yarp::os::Bottle> outputPort;                                // port necessary to send the gaze command to the gazeArbiter
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateInputPort;                                // port necessary to send the gaze command to the gazeArbiter
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // port necessary to send the gaze command to the gazeArbiter
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;                                // port necessary to send the gaze command to the gazeArbiter
+    yarp::os::BufferedPort <yarp::os::Bottle> outputPort;                                //
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageOutputPort;                                // input template Image  of the object to track
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // output Image with the ROI tracked
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;                                // input Image in which the tracking is perform
 
 
     //iKinGazeCtrl parameters
