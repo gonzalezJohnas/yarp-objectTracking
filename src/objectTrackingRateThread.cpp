@@ -43,6 +43,10 @@ objectTrackingRateThread::objectTrackingRateThread() : RateThread(THRATE) {
 }
 
 objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf) : RateThread(THRATE) {
+    robot =  rf.check("robot",
+                      Value("icub"),
+                      "robot name (string)").asString();;
+
     trackerType = rf.check("trackerType",
             Value("CSRT"),
             "tracker type (string)").asString();
@@ -114,11 +118,11 @@ void objectTrackingRateThread::run() {
 
         //iGaze->waitMotionDone();                        // wait until the operation is done
 
-        const bool successTracking = tracker->update(inputImageMat, currentTrackRect);
+        const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
 
 
         if (successTracking ){
-            //currentTrackRect = objectTemplateRectToTrack;
+            //currentTrackRect = ROITemplateToTrack;
             trackIkinGazeCtrl(currentTrackRect);
             cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar( 255, 0, 0 ), 2, 1 );
         }
@@ -154,10 +158,11 @@ bool objectTrackingRateThread::setTemplateFromImage() {
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
         const cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
 
-        //objectTemplateRectToTrack = cv::Rect2d(0, 0, templateMat.size().width, templateMat.size().height);
-        objectTemplateRectToTrack = cv::selectROI(inputImageMat, false);
-        trackingMode = true;
-        tracker->init(inputImageMat, objectTemplateRectToTrack);
+        //ROITemplateToTrack = cv::Rect2d(0, 0, templateMat.size().width, templateMat.size().height);
+        ROITemplateToTrack = cv::selectROI(inputImageMat, false);
+
+        initializeTracker(inputImageMat, ROITemplateToTrack);
+
         cv::destroyAllWindows();
 
         return  true;
@@ -183,6 +188,9 @@ void objectTrackingRateThread::setTracker() {
         tracker = TrackerGOTURN::create();
     if (trackerType == "MOSSE")
         tracker = TrackerMOSSE::create();
+    if (trackerType == "KF-EBT") {
+        kalmanFilterEnsembleBasedTracker.init("AKNC");
+    }
 
 }
 
@@ -261,6 +269,36 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 
 
     return false;
+}
+
+bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv::Rect2d t_ROIToTrack) {
+    if(trackerType == "KF-EBT"){
+
+        kalmanFilterEnsembleBasedTracker.initTrackers(t_image, t_ROIToTrack);
+        trackingMode = true;
+    }
+
+    else {
+        tracker->init(t_image, t_ROIToTrack);
+        trackingMode = true;
+
+    }
+    return false;
+}
+
+bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROITrackResult) {
+
+    bool ret = false;
+    if(tracker){
+        ret = tracker->update(t_image, *t_ROITrackResult);
+    }
+
+    else if(trackerType == "KF-EBT"){
+        *t_ROITrackResult = kalmanFilterEnsembleBasedTracker.track(t_image);
+        ret = true;
+    }
+
+    return ret;
 }
 
 

@@ -40,6 +40,7 @@
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
 
+#include "kfebt/kfebtracker.h"
 
 class objectTrackingRateThread : public yarp::os::RateThread {
 private:
@@ -53,7 +54,8 @@ private:
     //Tracker parameters
     std::string trackerType;
     cv::Ptr<cv::Tracker> tracker;
-    cv::Rect2d objectTemplateRectToTrack, currentTrackRect;
+    KFebTracker kalmanFilterEnsembleBasedTracker;
+    cv::Rect2d ROITemplateToTrack, currentTrackRect;
     bool trackingMode;
 
     yarp::os::BufferedPort <yarp::os::Bottle> outputPort;                                // port necessary to send the gaze command to the gazeArbiter
@@ -136,8 +138,11 @@ public:
 
     bool openIkinGazeCtrl();
 
-    bool trackIkinGazeCtrl(const cv:: Rect2d);
+    bool trackIkinGazeCtrl( cv:: Rect2d);
 
+    bool initializeTracker(cv::Mat t_image, cv::Rect2d t_ROIToTrack);
+
+    bool trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROIToTrack);
 
 };
 

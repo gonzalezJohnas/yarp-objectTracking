@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 2.6)
 SET(KEYWORD objectTracking)
 set(CMAKE_CXX_STANDARD 11)
-
+set(CMAKE_CXX_FLAGS "-pthread")
 FIND_PACKAGE(YARP REQUIRED)
 find_package(OpenCV REQUIRED)
 
@@ -19,8 +19,8 @@ INCLUDE_DIRECTORIES(
 )
 
 # Search for source code.
-FILE(GLOB folder_source src/*.cpp src/*.cc src/*.c)
-FILE(GLOB folder_header include/iCub/*.h)
+FILE(GLOB folder_source src/*.cpp src/*.cc src/*.c include/iCub/kfebt/trackers/*.cpp include/iCub/kfebt/trackers/*/*.cpp include/iCub/kfebt/trackers/*/*/*.cpp)
+FILE(GLOB folder_header include/iCub/*.h include/iCub/kfebt/trackers/*.h include/iCub/kfebt/trackers/*/*.h include/iCub/kfebt/trackers/*/*/*.h)
 SOURCE_GROUP("Source Files" FILES ${folder_source})
 SOURCE_GROUP("Header Files" FILES ${folder_header})
 
@@ -39,7 +39,7 @@ IF (folder_source)
 
     INSTALL_TARGETS(/bin ${KEYWORD})
 
+
 ELSE (folder_source)
     MESSAGE( "No source code files found. Please add something")
-
 ENDIF (folder_source)
