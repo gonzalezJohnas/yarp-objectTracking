@@ -76,17 +76,14 @@ bool objectTrackingRateThread::threadInit() {
     }
 
     if(!trackerOutputPort.open(this->name+"/trackerOutput:o")){
-        yInfo("Unable to open /trackerOutputPort:o port");
+        yInfo("Unable to open /trackerOutput:o port");
         return false;
     }
 
-    if(!templateImageOutputPort.open(this->name+"/templateImageOutput:o")){
-        yInfo("Unable to open /templateImageOutput:o port");
+    if(!templateImageOutputPort.open(this->name+"/templateOutput:o")){
+        yInfo("Unable to open /templateOutput:o port");
         return false;
     }
-
-
-
 
 
     setTracker();
@@ -98,6 +95,7 @@ bool objectTrackingRateThread::threadInit() {
     previousPosZ = 0;
 
     yInfo("Initialization of the processing thread correctly ended");
+    yInfo("Using tracker : %s", trackerType.c_str());
     const bool ret = openIkinGazeCtrl();
     return ret;
 }
@@ -128,18 +126,19 @@ void objectTrackingRateThread::run() {
 
 
         if (successTracking ){
-            //currentTrackRect = ROITemplateToTrack;
             trackIkinGazeCtrl(currentTrackRect);
-            cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar( 255, 0, 0 ), 2, 1 );
             cv::Mat outputTemplate = inputImageMat(currentTrackRect);
+            cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar( 255, 0, 0 ), 2, 1 );
+
 
             if(templateImageOutputPort.getOutputCount()){
-                // Display frame.
-                IplImage outputTemplateIPL = (IplImage) outputTemplate;
-
-                yarp::sig::ImageOf<yarp::sig::PixelBgr> *outputTrackImage = &templateImageOutputPort.prepare();
-
-                outputTrackImage->wrapIplImage(&outputTemplateIPL);
+                // Display frame.                
+                yarp::sig::ImageOf<yarp::sig::PixelBgr> &outputTemplateImage = templateImageOutputPort.prepare();
+                
+                IplImage outputTemplateIPL = outputTemplate;
+                outputTemplateImage.resize(outputTemplateIPL.width, outputTemplateIPL.height);
+                
+                cvCopy( &outputTemplateIPL, (IplImage *) outputTemplateImage.getIplImage());
                 templateImageOutputPort.write();
             }
 
@@ -147,7 +146,7 @@ void objectTrackingRateThread::run() {
 
         if(trackerOutputPort.getOutputCount()){
             // Display frame.
-            IplImage outputImageTrackerIPL = (IplImage) inputImageMat;
+            IplImage outputImageTrackerIPL = inputImageMat;
 
             yarp::sig::ImageOf<yarp::sig::PixelBgr> * outputTrackImage = &trackerOutputPort.prepare();
             inputImage->resize(outputImageTrackerIPL.width, outputImageTrackerIPL.height);

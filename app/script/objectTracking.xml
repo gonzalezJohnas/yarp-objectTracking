@@ -14,16 +14,23 @@
 
     <module>
         <name>yarpview</name>
-        <parameters>--name /trackingOutput --x 320 --y 350 </parameters>
+        <parameters>--name /trackingOutputView --x 320 --y 350 </parameters>
         <node>/icub16</node>
-        <tag>trackingOutput</tag>
+        <tag>trackingOutputView</tag>
+    </module>
+
+    <module>
+        <name>yarpview</name>
+        <parameters>--name /templateOutputView --x120 --y 150 </parameters>
+        <node>/icub16</node>
+        <tag>templateOutputView</tag>
     </module>
 
 
     <!-- Connections of the application -->
     <connection>
         <from>/icub/camcalib/left/out</from>
-        <to>/objectTracking/inputImagePort:i </to>
+        <to>/objectTracking/inputImage:i </to>
         <protocol>tcp</protocol>
     </connection>
 
@@ -34,8 +41,14 @@
     </connection>
 
     <connection>
-        <from>/objectTracking/trackerOutputPort:o </from>
-        <to>trackingOutput</to>
+        <from>/objectTracking/trackerOutput:o </from>
+        <to>/trackingOutputView</to>
+        <protocol>tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/objectTracking/templateOutput:o </from>
+        <to>/templateOutputView</to>
         <protocol>tcp</protocol>
     </connection>
 
