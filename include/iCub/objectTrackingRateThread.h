@@ -49,7 +49,8 @@ private:
     std::string robot;              // name of the robot
     std::string inputPortName;      // name of input port for incoming events,
     std::string name;               // rootname of all the ports opened by this thread
-
+    int widthInputImage;
+    int heightInputImage;
 
     //Tracker parameters
     std::string trackerType;
@@ -58,7 +59,7 @@ private:
     cv::Rect2d ROITemplateToTrack, currentTrackRect;
     bool trackingMode;
 
-    yarp::os::BufferedPort <yarp::os::Bottle> outputPort;                                //
+    yarp::os::BufferedPort <yarp::os::Bottle> inputTargetCoordinate;                                //
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageOutputPort;                                // input template Image  of the object to track
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // output Image with the ROI tracked
@@ -135,6 +136,8 @@ public:
 
     bool setTemplateFromImage();
 
+    bool setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax );
+
     void setTracker();
 
     bool openIkinGazeCtrl();
@@ -144,6 +147,8 @@ public:
     bool initializeTracker(cv::Mat t_image, cv::Rect2d t_ROIToTrack);
 
     bool trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROIToTrack);
+
+    bool checkROI(cv::Rect2d *t_ROI);
 
 };
 

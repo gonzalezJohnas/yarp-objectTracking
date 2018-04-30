@@ -136,7 +136,13 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                 switch (command.get(1).asVocab()) {
 
                     case COMMAND_VOCAB_TRACK:
-                        ok = rThread->setTemplateFromImage();
+                        if(command.get(2).isNull()){
+                            ok = rThread->setTemplateFromImage();
+                        }
+
+                        else {
+                            ok = rThread->setTemplateFromCoordinate(command.get(2).asInt(), command.get(3).asInt(), command.get(4).asInt(), command.get(5).asInt());
+                        }
                         break;
                     default:
                         cout << "received an unknown request after SET" << endl;

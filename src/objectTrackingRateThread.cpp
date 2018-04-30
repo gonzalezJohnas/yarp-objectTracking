@@ -37,7 +37,7 @@ using namespace std;
 
 objectTrackingRateThread::objectTrackingRateThread() : RateThread(THRATE) {
     robot = "icub";
-    trackerType = "CSRT";
+    trackerType = "KF-EBT";
     enableSaccade = false;
 
 }
@@ -48,7 +48,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
                       "robot name (string)").asString();;
 
     trackerType = rf.check("trackerType",
-            Value("CSRT"),
+            Value("KF-EBT"),
             "tracker type (string)").asString();
 
     enableSaccade = rf.check("saccade", Value(false)).asBool();
@@ -85,6 +85,13 @@ bool objectTrackingRateThread::threadInit() {
         return false;
     }
 
+    if(!inputTargetCoordinate.open(this->name+"/inputTargetCoordinate:i")){
+        yInfo("Unable to open /inputTargetCoordinate:i port");
+        return false;
+    }
+
+
+
 
     setTracker();
     trackingMode = false;
@@ -112,7 +119,6 @@ std::string objectTrackingRateThread::getName(const char *p) {
 }
 
 void objectTrackingRateThread::setInputPortName(string InpPort) {
-
 }
 
 void objectTrackingRateThread::run() {
@@ -125,36 +131,38 @@ void objectTrackingRateThread::run() {
         const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
 
 
-        if (successTracking ){
+        if (successTracking) {
+
+
             trackIkinGazeCtrl(currentTrackRect);
             cv::Mat outputTemplate = inputImageMat(currentTrackRect);
-            cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar( 255, 0, 0 ), 2, 1 );
 
 
-            if(templateImageOutputPort.getOutputCount()){
+            if (templateImageOutputPort.getOutputCount()) {
                 // Display frame.                
-                yarp::sig::ImageOf<yarp::sig::PixelBgr> &outputTemplateImage = templateImageOutputPort.prepare();
-                
+                yarp::sig::ImageOf <yarp::sig::PixelBgr> &outputTemplateImage = templateImageOutputPort.prepare();
+
                 IplImage outputTemplateIPL = outputTemplate;
                 outputTemplateImage.resize(outputTemplateIPL.width, outputTemplateIPL.height);
-                
-                cvCopy( &outputTemplateIPL, (IplImage *) outputTemplateImage.getIplImage());
+
+                cvCopy(&outputTemplateIPL, (IplImage *) outputTemplateImage.getIplImage());
                 templateImageOutputPort.write();
             }
 
+
+            if (trackerOutputPort.getOutputCount()) {
+                // Display frame.
+
+                cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar(255, 0, 0), 2, 1);
+                IplImage outputImageTrackerIPL = inputImageMat;
+
+                yarp::sig::ImageOf <yarp::sig::PixelBgr> *outputTrackImage = &trackerOutputPort.prepare();
+                inputImage->resize(outputImageTrackerIPL.width, outputImageTrackerIPL.height);
+
+                outputTrackImage->wrapIplImage(&outputImageTrackerIPL);
+                trackerOutputPort.write();
+            }
         }
-
-        if(trackerOutputPort.getOutputCount()){
-            // Display frame.
-            IplImage outputImageTrackerIPL = inputImageMat;
-
-            yarp::sig::ImageOf<yarp::sig::PixelBgr> * outputTrackImage = &trackerOutputPort.prepare();
-            inputImage->resize(outputImageTrackerIPL.width, outputImageTrackerIPL.height);
-
-            outputTrackImage->wrapIplImage(&outputImageTrackerIPL);
-            trackerOutputPort.write();
-        }
-
 
 
 
@@ -165,6 +173,8 @@ void objectTrackingRateThread::run() {
 
 
 void objectTrackingRateThread::threadRelease() {
+    yInfo("Releasing thread");
+    yInfo("Restoring iKinGaze context");
     iGaze->stopControl();
     iGaze->restoreContext(ikinGazeCtrl_Startcontext);
     clientGaze->close();
@@ -183,7 +193,6 @@ bool objectTrackingRateThread::setTemplateFromImage() {
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
         const cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
 
-        //ROITemplateToTrack = cv::Rect2d(0, 0, templateMat.size().width, templateMat.size().height);
         ROITemplateToTrack = cv::selectROI(inputImageMat, false);
 
         initializeTracker(inputImageMat, ROITemplateToTrack);
@@ -289,10 +298,6 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 
     }
 
-
-
-
-
     return false;
 }
 
@@ -327,7 +332,41 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t
     }
 
     return ret;
+
 }
+
+bool objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax ) {
+
+    if(inputImagePort.getInputCount()) {
+
+        ImageOf <yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
+        const cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
+
+        widthInputImage = inputImageMat.cols;
+        heightInputImage = inputImageMat.rows;
+
+        ROITemplateToTrack = cv::Rect2d(xMin, yMin, (xMax - xMin), (yMax - yMin));
+        initializeTracker(inputImageMat, ROITemplateToTrack);
+
+    }
+
+    return true;
+}
+
+bool objectTrackingRateThread::checkROI(cv::Rect2d *t_ROI) {
+    if (0 <= t_ROI->x
+        && 0 <= t_ROI->width
+        && t_ROI->x + t_ROI->width <= widthInputImage
+        && 0 <= t_ROI->y
+        && 0 <= t_ROI->height
+        && t_ROI->y + t_ROI->height <= heightInputImage){
+
+        return false;
+    } else{
+        return true;
+    }
+}
+
 
 
 

@@ -53,6 +53,7 @@ KFEBT::KFEBT(int nStates, int nMeasurements, int nInputs, double dt, cv::Rect in
 
 void KFEBT::predict(){
     estimated = KF.predict().clone();
+
 }
 
 void KFEBT::correct(std::vector<float> measures, std::vector<float> Uncertainty){
