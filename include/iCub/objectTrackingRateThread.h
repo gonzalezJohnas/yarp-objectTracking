@@ -30,17 +30,14 @@
 #include <yarp/sig/all.h>
 #include <yarp/os/all.h>
 #include <yarp/dev/all.h>
-#include <yarp/os/RateThread.h>
-#include <yarp/os/Log.h>
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <time.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
 
-#include "kfebt/kfebtracker.h"
+#include <iCub/kfebt/kfebtracker.h>
 
 class objectTrackingRateThread : public yarp::os::RateThread {
 private:

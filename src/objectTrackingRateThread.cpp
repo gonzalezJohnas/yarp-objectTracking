@@ -22,9 +22,10 @@
  * @brief Implementation of the eventDriven thread (see objectTrackingRateThreadRatethread.h).
  */
 
-#include "../include/iCub/objectTrackingRateThread.h"
 #include <cstring>
 #include <utility>
+
+#include <iCub/objectTrackingRateThread.h>
 
 using namespace yarp::dev;
 using namespace yarp::os;
@@ -284,7 +285,7 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
     // Calcul the Euclidian distance in image plane
     const double distancePreviousCurrent = sqrt(pow((imagePositionX - previousImagePosX),2)  + pow(( imagePositionY - previousImagePosY ),2));
 
-    yInfo("Distance is %f", distancePreviousCurrent);
+//    yInfo("Distance is %f", distancePreviousCurrent);
 
     if(ret && distancePreviousCurrent > 30 ){
 
@@ -354,17 +355,12 @@ bool objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const i
 }
 
 bool objectTrackingRateThread::checkROI(cv::Rect2d *t_ROI) {
-    if (0 <= t_ROI->x
-        && 0 <= t_ROI->width
-        && t_ROI->x + t_ROI->width <= widthInputImage
-        && 0 <= t_ROI->y
-        && 0 <= t_ROI->height
-        && t_ROI->y + t_ROI->height <= heightInputImage){
-
-        return false;
-    } else{
-        return true;
-    }
+    return !(0 <= t_ROI->x
+             && 0 <= t_ROI->width
+             && t_ROI->x + t_ROI->width <= widthInputImage
+             && 0 <= t_ROI->y
+             && 0 <= t_ROI->height
+             && t_ROI->y + t_ROI->height <= heightInputImage);
 }
 
 

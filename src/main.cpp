@@ -1,5 +1,4 @@
-#include "iCub/objectTrackingModule.h"
-#include <iostream>
+#include <iCub/objectTrackingModule.h>
 
 
 using namespace yarp::os;
