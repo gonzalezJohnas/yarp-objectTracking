@@ -78,9 +78,9 @@ bool objectTrackingModule::configure(yarp::os::ResourceFinder &rf) {
 
     rThread = new objectTrackingRateThread(rf);
     rThread->setName(this->getName());
-    if(!rThread->start()){
+    if (!rThread->start()) {
         yError("Unable to start the thread");
-        return  false;
+        return false;
     }
 
     return true;       // let the RFModule know everything went well
@@ -102,7 +102,7 @@ bool objectTrackingModule::interruptModule() {
 
 
 bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
-    vector <string> replyScript;
+    vector<string> replyScript;
     string helpMessage = string(getName().c_str()) +
                          " commands are: \n" +
                          "help \n" +
@@ -136,13 +136,20 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                 switch (command.get(1).asVocab()) {
 
                     case COMMAND_VOCAB_TRACK:
-                        if(command.get(2).isNull()){
-                            ok = rThread->setTemplateFromImage();
+                        if (command.get(2).asVocab() == COMMAND_VOCAB_SUSPEND) {
+                            ok = true;
+                            rThread->setTrackingState(false);
                         }
 
-                        else {
-                            ok = rThread->setTemplateFromCoordinate(command.get(2).asInt(), command.get(3).asInt(), command.get(4).asInt(), command.get(5).asInt());
+                        if (!rThread->isTrackingState()) {
+                            if (command.get(2).isNull()) {
+                                ok = rThread->setTemplateFromImage();
+                            } else {
+                                ok = rThread->setTemplateFromCoordinate(command.get(2).asInt(), command.get(3).asInt(),
+                                                                        command.get(4).asInt(), command.get(5).asInt());
+                            }
                         }
+
                         break;
                     default:
                         cout << "received an unknown request after SET" << endl;

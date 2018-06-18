@@ -44,13 +44,13 @@ objectTrackingRateThread::objectTrackingRateThread() : RateThread(THRATE) {
 }
 
 objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf) : RateThread(THRATE) {
-    robot =  rf.check("robot",
-                      Value("icub"),
-                      "robot name (string)").asString();;
+    robot = rf.check("robot",
+                     Value("icub"),
+                     "robot name (string)").asString();;
 
     trackerType = rf.check("trackerType",
-            Value("KF-EBT"),
-            "tracker type (string)").asString();
+                           Value("KF-EBT"),
+                           "tracker type (string)").asString();
 
     enableSaccade = rf.check("saccade", Value(false)).asBool();
 
@@ -66,39 +66,37 @@ objectTrackingRateThread::~objectTrackingRateThread() {
 
 bool objectTrackingRateThread::threadInit() {
 
-    if(!templateImageInputPort.open(this->name+"/templateImage:i")){
+    if (!templateImageInputPort.open(this->name + "/templateImage:i")) {
         yInfo("Unable to open /templateImage:i port");
         return false;
     }
 
-    if(!inputImagePort.open(this->name+"/inputImage:i")){
+    if (!inputImagePort.open(this->name + "/inputImage:i")) {
         yInfo("Unable to open /inputImage:i port");
         return false;
     }
 
-    if(!trackerOutputPort.open(this->name+"/trackerOutput:o")){
+    if (!trackerOutputPort.open(this->name + "/trackerOutput:o")) {
         yInfo("Unable to open /trackerOutput:o port");
         return false;
     }
 
-    if(!templateImageOutputPort.open(this->name+"/templateOutput:o")){
+    if (!templateImageOutputPort.open(this->name + "/templateOutput:o")) {
         yInfo("Unable to open /templateOutput:o port");
         return false;
     }
 
-    if(!inputTargetCoordinate.open(this->name+"/inputTargetCoordinate:i")){
+    if (!inputTargetCoordinate.open(this->name + "/inputTargetCoordinate:i")) {
         yInfo("Unable to open /inputTargetCoordinate:i port");
         return false;
     }
 
 
-
-
     setTracker();
-    trackingMode = false;
+    trackingState = false;
 
 
-    previousImagePosX =.0;
+    previousImagePosX = .0;
     previousImagePosY = 0;
     previousPosZ = 0;
 
@@ -124,51 +122,59 @@ void objectTrackingRateThread::setInputPortName(string InpPort) {
 
 void objectTrackingRateThread::run() {
 
-    if(inputImagePort.getInputCount() && trackingMode){
+    if (inputImagePort.getInputCount() && trackingState) {
+        try {
+            ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
+            cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
 
-        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read();
-        cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
+            const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
 
-        const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
-
-
-        if (successTracking) {
-
-
-            trackIkinGazeCtrl(currentTrackRect);
-            cv::Mat outputTemplate = inputImageMat(currentTrackRect);
+            if (successTracking) {
 
 
-            if (templateImageOutputPort.getOutputCount()) {
-                // Display frame.                
-                yarp::sig::ImageOf <yarp::sig::PixelBgr> &outputTemplateImage = templateImageOutputPort.prepare();
+                trackIkinGazeCtrl(currentTrackRect);
 
-                IplImage outputTemplateIPL = outputTemplate;
-                outputTemplateImage.resize(outputTemplateIPL.width, outputTemplateIPL.height);
 
-                cvCopy(&outputTemplateIPL, (IplImage *) outputTemplateImage.getIplImage());
-                templateImageOutputPort.write();
+                if (templateImageOutputPort.getOutputCount()) {
+
+
+                    cv::Mat outputTemplate = inputImageMat(currentTrackRect);
+                    // Display frame.
+                    yarp::sig::ImageOf<yarp::sig::PixelBgr> &outputTemplateImage = templateImageOutputPort.prepare();
+
+                    IplImage outputTemplateIPL = outputTemplate;
+                    outputTemplateImage.resize(outputTemplateIPL.width, outputTemplateIPL.height);
+
+                    cvCopy(&outputTemplateIPL, (IplImage *) outputTemplateImage.getIplImage());
+                    templateImageOutputPort.write();
+
+
+                }
+
+
+                if (trackerOutputPort.getOutputCount()) {
+                    // Display frame.
+
+                    cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar(255, 0, 0), 2, 1);
+                    IplImage outputImageTrackerIPL = inputImageMat;
+
+                    yarp::sig::ImageOf<yarp::sig::PixelBgr> *outputTrackImage = &trackerOutputPort.prepare();
+                    inputImage->resize(outputImageTrackerIPL.width, outputImageTrackerIPL.height);
+
+                    outputTrackImage->wrapIplImage(&outputImageTrackerIPL);
+                    trackerOutputPort.write();
+                }
+
+
             }
 
 
-            if (trackerOutputPort.getOutputCount()) {
-                // Display frame.
-
-                cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar(255, 0, 0), 2, 1);
-                IplImage outputImageTrackerIPL = inputImageMat;
-
-                yarp::sig::ImageOf <yarp::sig::PixelBgr> *outputTrackImage = &trackerOutputPort.prepare();
-                inputImage->resize(outputImageTrackerIPL.width, outputImageTrackerIPL.height);
-
-                outputTrackImage->wrapIplImage(&outputImageTrackerIPL);
-                trackerOutputPort.write();
-            }
         }
 
-
-
-
-
+        catch (exception &e) {
+            yError("Error during tracking %s", e.what());
+            trackingState = false;
+        }
     }
 }
 
@@ -187,7 +193,7 @@ void objectTrackingRateThread::threadRelease() {
 
 bool objectTrackingRateThread::setTemplateFromImage() {
 
-    if(templateImageInputPort.getInputCount() && inputImagePort.getInputCount()){
+    if (templateImageInputPort.getInputCount() && inputImagePort.getInputCount()) {
         ImageOf<yarp::sig::PixelBgr> *templateImage = templateImageInputPort.read(true);
         const cv::Mat templateMat = cv::cvarrToMat(templateImage->getIplImage());
 
@@ -200,7 +206,7 @@ bool objectTrackingRateThread::setTemplateFromImage() {
 
         cv::destroyAllWindows();
 
-        return  true;
+        return true;
     }
 
     return false;
@@ -210,7 +216,7 @@ void objectTrackingRateThread::setTracker() {
 
     using namespace cv;
     if (trackerType == "CSRT")
-        tracker = TrackerCSRT::create()  ;
+        tracker = TrackerCSRT::create();
     if (trackerType == "MIL")
         tracker = TrackerMIL::create();
     if (trackerType == "KCF")
@@ -235,9 +241,9 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
     //---------------------------------------------------------------
     yDebug("Opening the connection to the iKinGaze");
     Property optGaze; //("(device gazecontrollerclient)");
-    optGaze.put("device","gazecontrollerclient");
-    optGaze.put("remote","/iKinGazeCtrl");
-    optGaze.put("local","/objectTracking/gaze");
+    optGaze.put("device", "gazecontrollerclient");
+    optGaze.put("remote", "/iKinGazeCtrl");
+    optGaze.put("local", "/objectTracking/gaze");
 
     clientGaze = new PolyDriver();
     clientGaze->open(optGaze);
@@ -252,6 +258,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 
     iGaze->blockNeckRoll(0.0);
 
+    iGaze->
 
     iGaze->setSaccadesMode(enableSaccade);
 
@@ -280,14 +287,15 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
     imageFramePosition[1] = imagePositionY;
 
     // On the 3D frame reference of the robot the X axis is the depth
-    const bool ret = iGaze->get3DPoint(0, imageFramePosition, 1.0 , rootFramePosition );
+    const bool ret = iGaze->get3DPoint(0, imageFramePosition, 1.0, rootFramePosition);
 
     // Calcul the Euclidian distance in image plane
-    const double distancePreviousCurrent = sqrt(pow((imagePositionX - previousImagePosX),2)  + pow(( imagePositionY - previousImagePosY ),2));
+    const double distancePreviousCurrent = sqrt(
+            pow((imagePositionX - previousImagePosX), 2) + pow((imagePositionY - previousImagePosY), 2));
 
 //    yInfo("Distance is %f", distancePreviousCurrent);
 
-    if(ret && distancePreviousCurrent > 30 ){
+    if (ret && distancePreviousCurrent > 30) {
 
         // Storing the previous coordinate in the Robot frame reference
 
@@ -306,15 +314,13 @@ bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv
 
 
     currentTrackRect = t_ROIToTrack;
-    if(trackerType == "KF-EBT"){
+    if (trackerType == "KF-EBT") {
 
         kalmanFilterEnsembleBasedTracker.initTrackers(t_image, t_ROIToTrack);
-        trackingMode = true;
-    }
-
-    else {
+        trackingState = true;
+    } else {
         tracker->init(t_image, t_ROIToTrack);
-        trackingMode = true;
+        trackingState = true;
 
     }
     return false;
@@ -323,24 +329,24 @@ bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv
 bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROITrackResult) {
 
     bool ret = false;
-    if(tracker){
+    if (tracker) {
         ret = tracker->update(t_image, *t_ROITrackResult);
-    }
-
-    else if(trackerType == "KF-EBT"){
+    } else if (trackerType == "KF-EBT") {
         *t_ROITrackResult = kalmanFilterEnsembleBasedTracker.track(t_image);
         ret = true;
     }
+
 
     return ret;
 
 }
 
-bool objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax ) {
+bool
+objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax) {
 
-    if(inputImagePort.getInputCount()) {
+    if (inputImagePort.getInputCount() ) {
 
-        ImageOf <yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
+        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
         const cv::Mat inputImageMat = cv::cvarrToMat(inputImage->getIplImage());
 
         widthInputImage = inputImageMat.cols;
@@ -361,6 +367,14 @@ bool objectTrackingRateThread::checkROI(cv::Rect2d *t_ROI) {
              && 0 <= t_ROI->y
              && 0 <= t_ROI->height
              && t_ROI->y + t_ROI->height <= heightInputImage);
+}
+
+bool objectTrackingRateThread::isTrackingState() const {
+    return trackingState;
+}
+
+void objectTrackingRateThread::setTrackingState(bool trackingState) {
+    objectTrackingRateThread::trackingState = trackingState;
 }
 
 

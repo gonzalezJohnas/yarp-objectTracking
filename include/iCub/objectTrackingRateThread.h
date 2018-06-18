@@ -54,7 +54,7 @@ private:
     cv::Ptr<cv::Tracker> tracker;
     KFebTracker kalmanFilterEnsembleBasedTracker;
     cv::Rect2d ROITemplateToTrack, currentTrackRect;
-    bool trackingMode;
+    bool trackingState;
 
     yarp::os::BufferedPort <yarp::os::Bottle> inputTargetCoordinate;                                //
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
@@ -82,7 +82,7 @@ public:
      *
      * @param rf
      */
-    explicit objectTrackingRateThread(yarp::os::ResourceFinder &rf);
+    objectTrackingRateThread(yarp::os::ResourceFinder &rf);
 
     /**
     * constructor 
@@ -128,12 +128,18 @@ public:
     */
     void setInputPortName(std::string inpPrtName);
 
-
-    //******************************************************************************************************************
-
     bool setTemplateFromImage();
 
     bool setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax );
+
+    bool isTrackingState() const;
+
+    void setTrackingState(bool trackingState);
+
+private :
+
+    //******************************************************************************************************************
+
 
     void setTracker();
 
@@ -146,7 +152,6 @@ public:
     bool trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROIToTrack);
 
     bool checkROI(cv::Rect2d *t_ROI);
-
 };
 
 #endif  //_objectTracking_THREAD_H_

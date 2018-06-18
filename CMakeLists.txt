@@ -2,14 +2,15 @@
 # Authors: Gonzalez Jonas
 # CopyPolicy: Released under the terms of the GNU GPL v2.0.
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.5)
 SET(KEYWORD objectTracking)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "-pthread")
+
+
 FIND_PACKAGE(YARP REQUIRED)
 find_package(OpenCV REQUIRED)
 
-link_directories ( ${OpenCV_LIB_DIR} )
 
 #search for includes
 INCLUDE_DIRECTORIES(
