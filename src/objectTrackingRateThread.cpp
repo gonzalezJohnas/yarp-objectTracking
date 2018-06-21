@@ -258,7 +258,6 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 
     iGaze->blockNeckRoll(0.0);
 
-    iGaze->
 
     iGaze->setSaccadesMode(enableSaccade);
 

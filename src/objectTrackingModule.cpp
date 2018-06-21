@@ -103,10 +103,6 @@ bool objectTrackingModule::interruptModule() {
 
 bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
     vector<string> replyScript;
-    string helpMessage = string(getName().c_str()) +
-                         " commands are: \n" +
-                         "help \n" +
-                         "quit \n";
     reply.clear();
 
     if (command.get(0).asString() == "quit") {
@@ -125,6 +121,14 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
             rec = true;
             {
                 reply.addVocab(Vocab::encode("many"));
+                reply.addString("Object tracker module : Track and ROI given by coordinates of rectangle or a image template");
+                reply.addString("Command to initialize tracking are : ");
+                reply.addString("From a image template provide with the inputPort /templateImage:i : set trac ");
+                reply.addString("From a region of interest define from the input image : set trac topLeftX topLeftY bottomRightX bottomRightY ");
+                reply.addString("Other command :  ");
+                reply.addString("set trac sus : stop the tracking ");
+
+
 
                 ok = true;
             }
@@ -141,7 +145,7 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                             rThread->setTrackingState(false);
                         }
 
-                        if (!rThread->isTrackingState()) {
+                        else if (!rThread->isTrackingState()) {
                             if (command.get(2).isNull()) {
                                 ok = rThread->setTemplateFromImage();
                             } else {
@@ -173,6 +177,7 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
         case COMMAND_VOCAB_SUSPEND:
             rec = true;
             {
+                this->rThread->suspend();
                 ok = true;
             }
             break;
