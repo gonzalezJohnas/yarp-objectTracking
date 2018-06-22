@@ -6,11 +6,24 @@ cmake_minimum_required(VERSION 3.5)
 SET(KEYWORD objectTracking)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "-pthread")
-
+project(${KEYWORD})
 
 FIND_PACKAGE(YARP REQUIRED)
-find_package(OpenCV REQUIRED)
+FIND_PACKAGE(OpenCV REQUIRED)
+FIND_PACKAGE(ICUBcontrib REQUIRED)
 
+
+list(APPEND CMAKE_MODULE_PATH ${YARP_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH ${ICUB_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH ${ICUBCONTRIB_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(YarpInstallationHelpers)
+include(ICUBcontribHelpers)
+include(ICUBcontribOptions)
+
+
+icubcontrib_set_default_prefix()
+set(ICUB_APPLICATIONS_PREFIX "$ENV{ICUB_ROOT}" CACHE PATH "Application path prefix")
 
 #search for includes
 INCLUDE_DIRECTORIES(
@@ -26,6 +39,7 @@ SOURCE_GROUP("Source Files" FILES ${folder_source})
 SOURCE_GROUP("Header Files" FILES ${folder_header})
 
 
+set(ICUB_APPLICATIONS_PREFIX "$ENV{ICUB_ROOT}" CACHE PATH "Application path prefix")
 # Set up our main executable
 IF (folder_source)
     ADD_EXECUTABLE(${KEYWORD}
@@ -38,9 +52,14 @@ IF (folder_source)
             ${OpenCV_LIBS}
             )
 
-    INSTALL_TARGETS(/bin ${KEYWORD})
+    install(TARGETS  ${KEYWORD} DESTINATION bin)
 
 
 ELSE (folder_source)
     MESSAGE( "No source code files found. Please add something")
 ENDIF (folder_source)
+
+
+icubcontrib_add_uninstall_target()
+
+add_subdirectory(app)
