@@ -152,6 +152,8 @@ private :
     bool trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROIToTrack);
 
     bool checkROI(cv::Rect2d *t_ROI);
+
+    void stopTracking();
 };
 
 #endif  //_objectTracking_THREAD_H_

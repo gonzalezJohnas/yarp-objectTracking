@@ -9,7 +9,7 @@
     <module>
         <name>objectTracking</name>
         <tag>objectTracking</tag>
-        <node>/jonas</node>
+        <node>/icub-titan</node>
     </module>
 
     <module>
@@ -51,6 +51,13 @@
         <to>/templateOutputView</to>
         <protocol>tcp</protocol>
     </connection>
+
+     <connection>
+            <from>/faceDetector/face/rectCoord </from>
+            <to>/objectTracking</to>
+            <protocol>tcp</protocol>
+     </connection>
+
 
 </application>
 
