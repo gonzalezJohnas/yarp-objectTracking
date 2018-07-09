@@ -1,8 +1,21 @@
 # yarp-objectTracking
-This is Yarp module to perform object tracking using OpenCV trackers and the KalmanFilter ensemble based (KF-EBT by Senna, Pedro and Drummond, Isabela Neves and Bastos, Guilherme Sousa)
+This is Yarp module to perform object tracking using OpenCV trackers and the KalmanFilter ensemble based (KF-EBT by Senna, Pedro and Drummond, Isabela Neves and Bastos, Guilherme Sousa).
 
-
-
+## Yarp Ports
+Input
+ - inputImage:i : Input port to receive image livestream
+ - templateImage:i : Input port for the ROI to track
+ 
+Output
+ - trackerOutput:o : Ouput of the current tracking region in the live stream image
+ - templateOutput:o : Template image of tracking region
+ 
+ 
+ ## RPC commands
+ When connected to the RPC port this are the available command : 
+ - set trac : Will trac the ROI provide by the templateImage:i port
+ - set trac TopLeft.x TopLeft.y BottomRight.x BottomRight.y : Will track the ROI given by the coordinates
+ - set trac sus : Suspend the tracking
 _________________
 # References
 
