@@ -69,10 +69,15 @@ private:
     yarp::dev::IGazeControl *iGaze;
     bool enableSaccade;
 
-    double previousImagePosX, previousImagePosY, previousPosZ;
+    double previousImagePosX, previousImagePosY;
 
+    // Log parameters
+    bool enableLog, writeHeader;
+    std::string logPath;
+    std::string logFileName;
+    int counterFile;
 
-public:
+ public:
     /**
     * constructor default
     */
@@ -84,11 +89,7 @@ public:
      */
     objectTrackingRateThread(yarp::os::ResourceFinder &rf);
 
-    /**
-    * constructor 
-    * @param robotname name of the robot
-    */
-    objectTrackingRateThread(std::string robotname, std::string configFile);
+
 
     /**
      * destructor
@@ -136,7 +137,16 @@ public:
 
     void setTrackingState(bool trackingState);
 
-private :
+    bool checkLogDirectory();
+
+    void setLog_path(const string &log_path);
+
+    void setEnable_log(bool enable_log);
+
+    std::string getLog_path();
+
+
+ private :
 
     //******************************************************************************************************************
 
@@ -154,6 +164,9 @@ private :
     bool checkROI(cv::Rect2d *t_ROI);
 
     void stopTracking();
+
+    void logTrack(cv::Mat image, cv::Rect2d roi);
+
 };
 
 #endif  //_objectTracking_THREAD_H_

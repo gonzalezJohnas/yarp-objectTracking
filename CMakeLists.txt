@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.5)
 SET(KEYWORD objectTracking)
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS "-pthread")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 project(${KEYWORD})
 
 FIND_PACKAGE(YARP REQUIRED)

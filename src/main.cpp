@@ -10,6 +10,11 @@ int main(int argc, char *argv[]) {
     Network yarp;
     yarp.init();
 
+    if(!yarp.checkNetwork()){
+        yInfo("No yarp server found");
+        return 0;
+    }
+
     objectTrackingModule module;
 
     ResourceFinder rf;
