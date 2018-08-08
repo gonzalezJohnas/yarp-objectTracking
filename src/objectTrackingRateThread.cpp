@@ -228,7 +228,7 @@ void objectTrackingRateThread::setTracker() {
     if (trackerType == "MOSSE")
         tracker = TrackerMOSSE::create();
     if (trackerType == "KF-EBT") {
-        kalmanFilterEnsembleBasedTracker.init("ACK");
+        kalmanFilterEnsembleBasedTracker.init("AKN");
     }
 
 }
@@ -292,7 +292,7 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 
 //    yInfo("Distance is %f", distancePreviousCurrent);
 
-    if (ret && distancePreviousCurrent > 25) {
+    if (ret && distancePreviousCurrent > 30) {
 
         // Storing the previous coordinate in the Robot frame reference
 
