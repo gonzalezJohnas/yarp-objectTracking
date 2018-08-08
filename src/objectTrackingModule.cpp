@@ -62,6 +62,9 @@ bool objectTrackingModule::configure(yarp::os::ResourceFinder &rf) {
                          Value("icub"),
                          "Robot name (string)").asString();
 
+
+    string log_path = rf.check("logPath", Value("/tmp"),"Log path ").asString();
+
     /*
     * attach a port of the same name as the module (prefixed with a /) to the module
     * so that messages received from the port are redirected to the respond method
@@ -78,6 +81,7 @@ bool objectTrackingModule::configure(yarp::os::ResourceFinder &rf) {
 
     rThread = new objectTrackingRateThread(rf);
     rThread->setName(this->getName());
+    rThread->setLog_path(log_path);
     if (!rThread->start()) {
         yError("Unable to start the thread");
         return false;
@@ -138,6 +142,24 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
             rec = true;
             {
                 switch (command.get(1).asVocab()) {
+
+                    case COMMAND_VOCAB_LOG:
+                      ok = true;
+                        if(command.get(2).asString() == "on"){
+                            if(rThread->checkLogDirectory()){
+                                rThread->setEnable_log(true);
+
+                            }
+                            else{
+                                reply.clear();
+                                reply.addVocab(Vocab::encode("many"));
+                                reply.addString("Log directory " + rThread->getLog_path() +" don' match requirement for logging");
+                            }
+                        }
+                        else if(command.get(2).asString() == "off"){
+                            rThread->setEnable_log(false);
+                        }
+                        break;
 
                     case COMMAND_VOCAB_TRACK:
                         if (command.get(2).asVocab() == COMMAND_VOCAB_SUSPEND) {
