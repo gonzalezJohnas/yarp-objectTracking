@@ -207,7 +207,6 @@ bool objectTrackingRateThread::setTemplateFromImage() {
 
 void objectTrackingRateThread::setTracker() {
 
-<<<<<<< HEAD
     using namespace cv;
     if (trackerType == "CSRT")
         tracker = TrackerCSRT::create();
@@ -375,11 +374,11 @@ void objectTrackingRateThread::setTrackingState(bool trackingState) {
 
 void objectTrackingRateThread::stopTracking() {
   trackingState = false;
-//  Vector anglesHome(3);
-//  anglesHome[0] = 0.0;
-//  anglesHome[1] = 0.0;
-//  anglesHome[2] = 0.0;
-//  iGaze->lookAtAbsAngles(anglesHome);
+  Vector anglesHome(3);
+  anglesHome[0] = 0.0;
+  anglesHome[1] = 0.0;
+  anglesHome[2] = 0.0;
+  iGaze->lookAtAbsAngles(anglesHome);
 }
 
 void objectTrackingRateThread::setEnable_log(bool enable_log) {

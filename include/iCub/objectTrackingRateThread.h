@@ -137,10 +137,6 @@ private:
 
     void setTrackingState(bool trackingState);
 
-
-
-private :
-
     bool checkLogDirectory();
 
     void setLog_path(const string &log_path);
@@ -148,6 +144,8 @@ private :
     void setEnable_log(bool enable_log);
 
     std::string getLog_path();
+
+private :
 
 
     //******************************************************************************************************************
