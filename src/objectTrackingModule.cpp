@@ -153,7 +153,7 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                             else{
                                 reply.clear();
                                 reply.addVocab(Vocab::encode("many"));
-                                reply.addString("Log directory " + rThread->getLog_path() +" don' match requirement for logging");
+                                reply.addString("Log directory " + rThread->getLog_path() +" don't match requirement for logging");
                             }
                         }
                         else if(command.get(2).asString() == "off"){
@@ -188,7 +188,11 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
             rec = true;
             {
                 switch (command.get(1).asVocab()) {
-
+                    case COMMAND_VOCAB_TRACK:
+                        ok = true;
+                        reply.clear();
+                        reply.addInt(rThread->isTrackingState());
+                        break;
                     default:
                         cout << "received an unknown request after a GET" << endl;
                         break;
