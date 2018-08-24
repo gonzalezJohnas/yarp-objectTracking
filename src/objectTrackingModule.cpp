@@ -131,6 +131,8 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                 reply.addString("From a region of interest define from the input image : set trac topLeftX topLeftY bottomRightX bottomRightY ");
                 reply.addString("Other command :  ");
                 reply.addString("set trac sus : stop the tracking ");
+                reply.addString("set log on : start to log images with bounding box coordinate ");
+                reply.addString("set trac off : stop to log images with bounding box coordinate");
 
 
 

@@ -24,6 +24,7 @@
 
 #include <cstring>
 #include <utility>
+#include <ctime>
 
 #include <iCub/objectTrackingRateThread.h>
 #include <sys/stat.h>
@@ -207,24 +208,24 @@ bool objectTrackingRateThread::setTemplateFromImage() {
 
 void objectTrackingRateThread::setTracker() {
 
-    using namespace cv;
-    if (trackerType == "CSRT")
-        tracker = TrackerCSRT::create();
-    if (trackerType == "MIL")
-        tracker = TrackerMIL::create();
-    if (trackerType == "KCF")
-        tracker = TrackerKCF::create();
-    if (trackerType == "TLD")
-        tracker = TrackerTLD::create();
-    if (trackerType == "MEDIANFLOW")
-        tracker = TrackerMedianFlow::create();
-    if (trackerType == "GOTURN")
-        tracker = TrackerGOTURN::create();
-    if (trackerType == "MOSSE")
-        tracker = TrackerMOSSE::create();
-    if (trackerType == "KF-EBT") {
-        kalmanFilterEnsembleBasedTracker.init("AKN");
-    }
+  using namespace cv;
+  if (trackerType == "CSRT")
+    tracker = TrackerCSRT::create();
+  if (trackerType == "MIL")
+    tracker = TrackerMIL::create();
+  if (trackerType == "KCF")
+    tracker = TrackerKCF::create();
+  if (trackerType == "TLD")
+    tracker = TrackerTLD::create();
+  if (trackerType == "MEDIANFLOW")
+    tracker = TrackerMedianFlow::create();
+  if (trackerType == "GOTURN")
+    tracker = TrackerGOTURN::create();
+  if (trackerType == "MOSSE")
+    tracker = TrackerMOSSE::create();
+  if (trackerType == "KF-EBT") {
+    kalmanFilterEnsembleBasedTracker.init("AKN");
+  }
 
 }
 
@@ -287,7 +288,7 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 //    yInfo("Distance is %f", distancePreviousCurrent);
 
 
-    if (ret && distancePreviousCurrent > 30) {
+  if (ret && distancePreviousCurrent > 30) {
 
 
     // Storing the previous coordinate in the Robot frame reference
@@ -387,6 +388,9 @@ void objectTrackingRateThread::setEnable_log(bool enable_log) {
 
 void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
 
+  time_t currentTime = time(0);
+  const tm *currentTimeStruct = localtime(&currentTime);
+
   std::ofstream logging;
   logging.open(logFileName, std::ios::app);
 
@@ -396,18 +400,25 @@ void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
 
   }
 
-  string image_name = this->logPath + "/images/log_" + to_string(counterFile) + ".jpeg";
+  const string dateTime = to_string(currentTimeStruct->tm_mday) + "-" + to_string(currentTimeStruct->tm_mon + 1) \
+ + "-" + to_string(1900 + currentTimeStruct->tm_year) + "_" + to_string(currentTimeStruct->tm_hour) \
+ + to_string(currentTimeStruct->tm_min);
+
+  const string image_name = this->logPath + "/images/log" + to_string(counterFile) + "_" + dateTime + ".jpeg";
+
   cv::imwrite(image_name, image);
 
-  logging << "log_" + to_string(counterFile) + ".jpeg" + ',' + to_string(roi.tl().x) + ',' + to_string(roi.tl().y) + ',' + to_string(roi.br().x) + ','
+  logging << "log_" + to_string(counterFile) + ".jpeg" + ',' + to_string(roi.tl().x) + ',' + to_string(roi.tl().y) + ','
+      + to_string(roi.br().x) + ','
       + to_string(roi.br().y) + '\n';
   logging.close();
   ++counterFile;
 }
+
 bool objectTrackingRateThread::checkLogDirectory() {
   struct stat st;
   const string image_dir = this->logPath + "/images";
-  return (stat(this->logPath.c_str(), &st) == 0 & stat(image_dir.c_str(), &st) == 0);
+  return (stat(this->logPath.c_str(), &st) == 0 && stat(image_dir.c_str(), &st) == 0);
 
 }
 void objectTrackingRateThread::setLog_path(const string &log_path) {
