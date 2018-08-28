@@ -77,7 +77,7 @@ cv::Rect KFebTracker::track(cv::Mat image){
 
     std::cout << "Mean uncertainty " << meanUncertainty << std::endl;
 
-    if(meanUncertainty > 1.5 ){
+    if(meanUncertainty > 3. ){
         return cv::Rect2d();
     };
     // Correct the KF

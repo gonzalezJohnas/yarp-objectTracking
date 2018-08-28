@@ -146,20 +146,22 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                 switch (command.get(1).asVocab()) {
 
                     case COMMAND_VOCAB_LOG:
-                      ok = true;
                         if(command.get(2).asString() == "on"){
                             if(rThread->checkLogDirectory()){
                                 rThread->setEnable_log(true);
+                                ok = true;
 
                             }
                             else{
                                 reply.clear();
                                 reply.addVocab(Vocab::encode("many"));
-                                reply.addString("Log directory " + rThread->getLog_path() +" don't match requirement for logging");
+                                yInfo("Log directory %s  don't match requirement for logging", rThread->getLog_path().c_str());
+                                ok = false;
                             }
                         }
                         else if(command.get(2).asString() == "off"){
                             rThread->setEnable_log(false);
+                            ok = true;
                         }
                         break;
 

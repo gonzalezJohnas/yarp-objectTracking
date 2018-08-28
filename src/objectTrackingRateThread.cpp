@@ -104,7 +104,7 @@ bool objectTrackingRateThread::threadInit() {
   counterFile = 0;
 
   const bool ret = openIkinGazeCtrl();
-  return true;
+  return ret;
 }
 
 void objectTrackingRateThread::setName(string str) {
@@ -224,7 +224,7 @@ void objectTrackingRateThread::setTracker() {
   if (trackerType == "MOSSE")
     tracker = TrackerMOSSE::create();
   if (trackerType == "KF-EBT") {
-    kalmanFilterEnsembleBasedTracker.init("AKN");
+    kalmanFilterEnsembleBasedTracker.init("AKNC");
   }
 
 }
@@ -256,7 +256,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 
   //Set trajectory time:
   iGaze->setNeckTrajTime(0.8);
-  iGaze->setEyesTrajTime(0.3);
+  iGaze->setEyesTrajTime(0.5);
   iGaze->setTrackingMode(true);
   iGaze->setVORGain(1.3);
   iGaze->setOCRGain(1.0);
@@ -288,7 +288,7 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 //    yInfo("Distance is %f", distancePreviousCurrent);
 
 
-  if (ret && distancePreviousCurrent > 30) {
+  if (ret && distancePreviousCurrent > 50) {
 
 
     // Storing the previous coordinate in the Robot frame reference
@@ -392,7 +392,8 @@ void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
   const tm *currentTimeStruct = localtime(&currentTime);
 
   std::ofstream logging;
-  logging.open(logFileName, std::ios::app);
+
+  logging.open(logFileName, std::ofstream::out | std::ios::app);
 
   if (writeHeader) {
     logging << "filename,xmin,ymin,xmax,ymax\n";
@@ -404,13 +405,13 @@ void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
  + "-" + to_string(1900 + currentTimeStruct->tm_year) + "_" + to_string(currentTimeStruct->tm_hour) \
  + to_string(currentTimeStruct->tm_min);
 
-  const string image_name = this->logPath + "/images/log" + to_string(counterFile) + "_" + dateTime + ".jpeg";
+  const string image_name = "log" + to_string(counterFile) + "_" + dateTime + ".jpeg";
 
-  cv::imwrite(image_name, image);
+  cv::imwrite(this->logPath + "/images/" + image_name, image);
 
-  logging << "log_" + to_string(counterFile) + ".jpeg" + ',' + to_string(roi.tl().x) + ',' + to_string(roi.tl().y) + ','
-      + to_string(roi.br().x) + ','
-      + to_string(roi.br().y) + '\n';
+  logging << image_name  + "," + to_string(roi.tl().x) + "," + to_string(roi.tl().y) + ","
+      + to_string(roi.br().x) + ","
+      + to_string(roi.br().y) + "\n";
   logging.close();
   ++counterFile;
 }
