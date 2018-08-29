@@ -56,6 +56,11 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
 
   enableSaccade = rf.check("saccade", Value(false)).asBool();
 
+  const double thresholdUncertaintyTracker =  rf.check("threshold_tracker", Value(3.)).asDouble();
+  kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
+
+
+
 }
 
 objectTrackingRateThread::~objectTrackingRateThread() {
@@ -98,10 +103,11 @@ bool objectTrackingRateThread::threadInit() {
   yInfo("Initialization of the processing thread correctly ended");
   yInfo("Using tracker : %s", trackerType.c_str());
 
-  logFileName = logPath + "/test.csv";
+  logFileName = logPath + "/data_tracker.csv";
   enableLog = false;
   writeHeader = true;
   counterFile = 0;
+  frequencyAcquisitionCounter = 0;
 
   const bool ret = openIkinGazeCtrl();
   return ret;
@@ -133,8 +139,13 @@ void objectTrackingRateThread::run() {
 
       trackIkinGazeCtrl(currentTrackRect);
 
-      if (enableLog) {
+      if (enableLog && frequencyAcquisitionCounter > 5) {
         logTrack(inputImageMat, currentTrackRect);
+        frequencyAcquisitionCounter = 0;
+      }
+
+      else{
+        ++frequencyAcquisitionCounter;
       }
 
       if (templateImageOutputPort.getOutputCount()) {
@@ -225,6 +236,8 @@ void objectTrackingRateThread::setTracker() {
     tracker = TrackerMOSSE::create();
   if (trackerType == "KF-EBT") {
     kalmanFilterEnsembleBasedTracker.init("AKNC");
+    yInfo("Using ensemble based tracker with threshold uncertainty %f", kalmanFilterEnsembleBasedTracker.getThresholdUncertainty());
+
   }
 
 }

@@ -63,7 +63,7 @@ bool objectTrackingModule::configure(yarp::os::ResourceFinder &rf) {
                          "Robot name (string)").asString();
 
 
-    string log_path = rf.check("logPath", Value("/tmp"),"Log path ").asString();
+    const string log_path = rf.check("logPath", Value("/tmp"),"Log path ").asString();
 
     /*
     * attach a port of the same name as the module (prefixed with a /) to the module

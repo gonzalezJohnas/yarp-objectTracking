@@ -75,7 +75,7 @@ private:
     bool enableLog, writeHeader;
     std::string logPath;
     std::string logFileName;
-    int counterFile;
+    int counterFile, frequencyAcquisitionCounter;
 
  public:
     /**

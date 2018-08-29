@@ -17,10 +17,13 @@ public:
     void initTrackers(cv::Mat image, cv::Rect region);
     cv::Rect track(cv::Mat image);
 
-private:
-    float ajuste = 0.15;
+    void setThresholdUncertainty(double thr){this->thresholdUncertainty = thr;}
+    double getThresholdUncertainty() {return this->thresholdUncertainty;}
 
-    // Trackers
+ private:
+  float ajuste = 0.15;
+  double thresholdUncertainty = 3.;
+  // Trackers
     tASMS asms;
     tKCF kcf;
     tCBT cbt;
@@ -33,6 +36,8 @@ private:
     KFEBT fusion;
 
     std::vector<float> uncertainty, trackersResults;
+
+
 };
 
 #endif // KFEBTRACKER_H
