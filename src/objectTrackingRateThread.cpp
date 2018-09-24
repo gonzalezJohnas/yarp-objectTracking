@@ -109,8 +109,10 @@ bool objectTrackingRateThread::threadInit() {
   counterFile = 0;
   frequencyAcquisitionCounter = 0;
 
+  oneSecondCpt = 0;
+
   const bool ret = openIkinGazeCtrl();
-  return ret;
+  return true;
 }
 
 void objectTrackingRateThread::setName(string str) {
@@ -128,6 +130,9 @@ void objectTrackingRateThread::setInputPortName(string InpPort) {
 
 void objectTrackingRateThread::run() {
 
+  SystemClock timer;
+
+
   if (inputImagePort.getInputCount() && trackingState) {
 
     ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
@@ -135,9 +140,13 @@ void objectTrackingRateThread::run() {
 
     const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
 
-    if (successTracking) {
+    if (successTracking && habituationCpt > 0) {
 
-      trackIkinGazeCtrl(currentTrackRect);
+      const double timeDiff = timer.now() - oneSecondCpt;
+      if(!trackIkinGazeCtrl(currentTrackRect) && timeDiff > 1) {
+        habituationCpt--;
+        oneSecondCpt = timer.now();
+      }
 
       if (enableLog && frequencyAcquisitionCounter > 5) {
         logTrack(inputImageMat, currentTrackRect);
@@ -263,7 +272,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
   clientGaze->view(iGaze);
   iGaze->storeContext(&ikinGazeCtrl_Startcontext);
 
-  iGaze->blockNeckRoll(0.0);
+//  iGaze->blockNeckRoll(0.0);
 
   iGaze->setSaccadesMode(enableSaccade);
 
@@ -301,7 +310,8 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 //    yInfo("Distance is %f", distancePreviousCurrent);
 
 
-  if (ret && distancePreviousCurrent > 50) {
+
+  if (ret && distancePreviousCurrent > 30) {
 
 
     // Storing the previous coordinate in the Robot frame reference
@@ -387,6 +397,8 @@ void objectTrackingRateThread::setTrackingState(bool trackingState) {
 }
 
 void objectTrackingRateThread::stopTracking() {
+  habituationCpt = 0;
+
   trackingState = false;
   Vector anglesHome(3);
   anglesHome[0] = 0.0;

@@ -1,3 +1,4 @@
+#include <opencv2/imgproc/types_c.h>
 #include "kcf.h"
 
 void KCF_Tracker::init(cv::Mat &img)

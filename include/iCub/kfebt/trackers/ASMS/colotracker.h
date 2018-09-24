@@ -1,8 +1,8 @@
 #ifndef COLOTRACKER_H
 #define COLOTRACKER_H
 
-#include "cv.h"
-#include "highgui.h"
+#include <opencv/cv.h>
+#include <opencv2/highgui.hpp>
 #include "region.h"
 #include "histogram.h"
 #include <iostream>

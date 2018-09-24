@@ -77,6 +77,11 @@ private:
     std::string logFileName;
     int counterFile, frequencyAcquisitionCounter;
 
+
+    // Habituation decay factor
+    int habituationCpt;
+    double oneSecondCpt;
+
  public:
     /**
     * constructor default

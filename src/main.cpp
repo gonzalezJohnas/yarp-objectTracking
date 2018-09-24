@@ -27,5 +27,8 @@ int main(int argc, char *argv[]) {
     yInfo("resourceFinder: %s", rf.toString().c_str());
 
     module.runModule(rf);
+
+
+
     return 0;
 }

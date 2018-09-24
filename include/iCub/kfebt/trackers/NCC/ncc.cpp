@@ -1,3 +1,4 @@
+#include <opencv2/imgproc/types_c.h>
 #include "ncc.h"
 
 void NCCTracker::init(cv::Mat &img, cv::Rect rect){

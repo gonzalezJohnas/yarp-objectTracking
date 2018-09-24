@@ -1,3 +1,4 @@
+#include <opencv2/imgproc/types_c.h>
 #include "tkcf.h"
 
 tKCF::tKCF(float dist_adj, float conf_adj)
