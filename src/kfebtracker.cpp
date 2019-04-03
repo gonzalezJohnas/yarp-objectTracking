@@ -2,7 +2,7 @@
 
 KFebTracker::KFebTracker()
 {
-    asms = tASMS(ajuste, 0.90);
+    asms = tASMS(ajuste, 0.50);
     kcf = tKCF(ajuste, 1.15);
     cbt = tCBT(ajuste, 0.45);
     vdp = tVDP(ajuste, 0.60);
@@ -73,13 +73,13 @@ cv::Rect KFebTracker::track(cv::Mat image){
         meanUncertainty += uncertainty[i] * 100000;
     }
 
-    meanUncertainty /= trackers.size();
+//    meanUncertainty /= trackers.size();
 
-    std::cout << "Mean uncertainty " << meanUncertainty << std::endl;
+//    std::cout << "Mean uncertainty " << meanUncertainty << std::endl;
 
-    if(meanUncertainty > thresholdUncertainty ){
-        return cv::Rect2d();
-    };
+//    if(meanUncertainty > thresholdUncertainty ){
+//        return cv::Rect2d();
+//    };
     // Correct the KF
     fusion.correct(trackersResults, uncertainty);
 

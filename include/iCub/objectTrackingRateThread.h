@@ -55,6 +55,10 @@ private:
     KFebTracker kalmanFilterEnsembleBasedTracker;
     cv::Rect2d ROITemplateToTrack, currentTrackRect;
     bool trackingState;
+    yarp::os::SystemClock timer;
+    double timeDiff;
+
+
 
     yarp::os::BufferedPort <yarp::os::Bottle> inputTargetCoordinate;                                //
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
@@ -80,7 +84,7 @@ private:
 
     // Habituation decay factor
     int habituationCpt;
-    double oneSecondCpt;
+    double currentTime;
 
  public:
     /**

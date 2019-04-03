@@ -22,7 +22,7 @@ public:
 
  private:
   float ajuste = 0.15;
-  double thresholdUncertainty = 3.;
+  double thresholdUncertainty;
   // Trackers
     tASMS asms;
     tKCF kcf;
