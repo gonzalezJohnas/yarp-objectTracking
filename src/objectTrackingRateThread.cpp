@@ -56,7 +56,9 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
 
     enableSaccade = rf.check("saccade", Value(false)).asBool();
 
-    const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(10.)).asDouble();
+    doHabituation = rf.check("habituation", Value(false)).asBool();
+
+    const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
 
 
@@ -109,7 +111,7 @@ bool objectTrackingRateThread::threadInit() {
     frequencyAcquisitionCounter = 0;
 
     currentTime = 0;
-    habituationCpt = 100;
+    habituationCpt = 10000;
 
     const bool ret = openIkinGazeCtrl();
     return ret;
@@ -146,7 +148,8 @@ void objectTrackingRateThread::run() {
 
 
             if (!trackIkinGazeCtrl(currentTrackRect) ) {
-                habituationCpt--;
+
+                doHabituation?habituationCpt--:0;
 
             }
 
@@ -186,9 +189,9 @@ void objectTrackingRateThread::run() {
             if(this->habituationCpt==0){
                 yInfo("Stop tracking because of fixed target");
             }
-
-
             stopTracking();
+
+
         }
 
     }
@@ -273,15 +276,15 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
     iGaze->storeContext(&ikinGazeCtrl_Startcontext);
 
 
-    iGaze->setSaccadesMode(enableSaccade);
+//    iGaze->setSaccadesMode(enableSaccade);
     //Set trajectory time:
     iGaze->blockNeckRoll(0.0);
 
-    iGaze->setNeckTrajTime(0.5);
-    iGaze->setEyesTrajTime(0.2);
-    iGaze->setTrackingMode(true);
-    iGaze->setVORGain(1.3);
-    iGaze->setOCRGain(0.7);
+//    iGaze->setNeckTrajTime(0.5);
+//    iGaze->setEyesTrajTime(0.2);
+//    iGaze->setTrackingMode(true);
+//    iGaze->setVORGain(1.3);
+//    iGaze->setOCRGain(0.7);
 
     yDebug("Initialization of iKingazeCtrl completed");
     return true;
@@ -307,10 +310,10 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
     const double distancePreviousCurrent = sqrt(
             pow((imagePositionX - previousImagePosX), 2) + pow((imagePositionY - previousImagePosY), 2));
 
-    yInfo("Distance is %f", distancePreviousCurrent);
+    yDebug("Distance is %f", distancePreviousCurrent);
 
 
-    yInfo("TimeDiff is %f", timeDiff);
+    yDebug("TimeDiff is %f", timeDiff);
 
 
     if (distancePreviousCurrent > 20 ) {
@@ -384,7 +387,7 @@ objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yM
         widthInputImage = inputImageMat.cols;
         heightInputImage = inputImageMat.rows;
 
-        ROITemplateToTrack = cv::Rect2d(xMin, yMin, (xMax - xMin), (yMax - yMin));
+        ROITemplateToTrack = cv::Rect2d(xMin, yMin, std::abs(xMax - xMin), std::abs(yMax - yMin));
         initializeTracker(inputImageMat, ROITemplateToTrack);
 
     }
@@ -410,7 +413,7 @@ void objectTrackingRateThread::setTrackingState(bool trackingState) {
 }
 
 void objectTrackingRateThread::stopTracking() {
-    habituationCpt = 100;
+    habituationCpt = 10000;
 
     trackingState = false;
     Vector anglesHome(3);

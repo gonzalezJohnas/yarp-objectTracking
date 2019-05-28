@@ -85,6 +85,7 @@ private:
     // Habituation decay factor
     int habituationCpt;
     double currentTime;
+    bool doHabituation;
 
  public:
     /**
@@ -154,6 +155,9 @@ private:
 
     std::string getLog_path();
 
+    void stopTracking();
+
+
 private :
 
 
@@ -172,7 +176,6 @@ private :
 
     bool checkROI(cv::Rect2d *t_ROI);
 
-    void stopTracking();
 
     void logTrack(cv::Mat image, cv::Rect2d roi);
 

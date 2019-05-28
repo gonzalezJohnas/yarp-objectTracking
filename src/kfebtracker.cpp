@@ -73,13 +73,15 @@ cv::Rect KFebTracker::track(cv::Mat image){
         meanUncertainty += uncertainty[i] * 100000;
     }
 
-//    meanUncertainty /= trackers.size();
+    meanUncertainty /= trackers.size();
 
-//    std::cout << "Mean uncertainty " << meanUncertainty << std::endl;
+    std::cout << "Mean uncertainty " << meanUncertainty << std::endl;
 
-//    if(meanUncertainty > thresholdUncertainty ){
-//        return cv::Rect2d();
-//    };
+    if(meanUncertainty > thresholdUncertainty ){
+        return cv::Rect2d();
+    };
+
+
     // Correct the KF
     fusion.correct(trackersResults, uncertainty);
 

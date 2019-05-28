@@ -30,11 +30,12 @@ INCLUDE_DIRECTORIES(
         ${PROJECT_SOURCE_DIR}/include
         ${YARP_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
+        /usr/local/src/robot/yarp/src/libYARP_cv/include
 )
 
 # Search for source code.
 FILE(GLOB folder_source src/*.cpp src/*.cc src/*.c include/iCub/kfebt/trackers/*.cpp include/iCub/kfebt/trackers/*/*.cpp include/iCub/kfebt/trackers/*/*/*.cpp)
-FILE(GLOB folder_header include/iCub/*.h include/iCub/kfebt/trackers/*.h include/iCub/kfebt/trackers/*/*.h include/iCub/kfebt/trackers/*/*/*.h)
+FILE(GLOB folder_header include/iCub/*.h include/iCub/kfebt/*.h include/iCub/kfebt/trackers/*.h include/iCub/kfebt/trackers/*/*.h include/iCub/kfebt/trackers/*/*/*.h)
 SOURCE_GROUP("Source Files" FILES ${folder_source})
 SOURCE_GROUP("Header Files" FILES ${folder_header})
 

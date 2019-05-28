@@ -168,7 +168,7 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                     case COMMAND_VOCAB_TRACK:
                         if (command.get(2).asVocab() == COMMAND_VOCAB_SUSPEND) {
                             ok = true;
-                            rThread->setTrackingState(false);
+                            rThread->stopTracking();
                         }
 
                         else if (!rThread->isTrackingState()) {
