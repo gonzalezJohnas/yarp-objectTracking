@@ -57,6 +57,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
     enableSaccade = rf.check("saccade", Value(false)).asBool();
 
     doHabituation = rf.check("habituation", Value(false)).asBool();
+    habituationCpt = rf.check("habituation_cpt", Value(2000)).asInt();;
 
     const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
@@ -111,7 +112,6 @@ bool objectTrackingRateThread::threadInit() {
     frequencyAcquisitionCounter = 0;
 
     currentTime = 0;
-    habituationCpt = 10000;
 
     const bool ret = openIkinGazeCtrl();
     return ret;
