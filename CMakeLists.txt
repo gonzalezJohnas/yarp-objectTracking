@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 project(${KEYWORD})
 
+set(ICUB_CONTRIB_DIRS $ENV{ICUB_DIR}/include)
+
 FIND_PACKAGE(YARP REQUIRED)
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(ICUBcontrib REQUIRED)
@@ -17,6 +19,7 @@ list(APPEND CMAKE_MODULE_PATH ${YARP_MODULE_PATH})
 list(APPEND CMAKE_MODULE_PATH ${ICUB_MODULE_PATH})
 list(APPEND CMAKE_MODULE_PATH ${ICUBCONTRIB_MODULE_PATH})
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 include(YarpInstallationHelpers)
 include(ICUBcontribHelpers)
 include(ICUBcontribOptions)
@@ -61,6 +64,6 @@ ELSE (folder_source)
 ENDIF (folder_source)
 
 
-icubcontrib_add_uninstall_target()
 
 add_subdirectory(app)
+icubcontrib_add_uninstall_target()

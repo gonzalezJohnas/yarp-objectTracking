@@ -57,8 +57,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
     enableSaccade = rf.check("saccade", Value(false)).asBool();
 
     doHabituation = rf.check("habituation", Value(false)).asBool();
-    habituationCpt = rf.check("habituation_cpt", Value(2000)).asInt();;
-
+    habituationCpt = rf.check("habituation_cpt", Value(25), "habituation threshold in seconds").asInt();;
     const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
 
@@ -96,6 +95,19 @@ bool objectTrackingRateThread::threadInit() {
         return false;
     }
 
+    if (!anglePositionPort.open(getName("/anglePositionPort:i"))) {
+        yInfo("Unable to open port /anglePositionPort");
+        return false;  // unable to open; let RFModule know so that it won't run
+    }
+
+    if (!NetworkBase::connect("/iKinGazeCtrl/angles:o", anglePositionPort.getName())) {
+        yInfo("Unable to connect to iKinGazeCtrl/angles:o check that IkInGazeCtrl is running");
+        return false;
+
+    }
+
+
+
     setTracker();
     trackingState = false;
 
@@ -110,6 +122,7 @@ bool objectTrackingRateThread::threadInit() {
     writeHeader = true;
     counterFile = 0;
     frequencyAcquisitionCounter = 0;
+    new_interaction_counter = 0;
 
     currentTime = 0;
 
@@ -134,26 +147,29 @@ void objectTrackingRateThread::run() {
 
 
 
-
     if (inputImagePort.getInputCount() && trackingState) {
+        timeDiff = timer.now() - currentTime;
 
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
         cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
 
         const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
 
-        if (successTracking && habituationCpt ) {
+        if (successTracking  ) {
 
-            timeDiff = timer.now() - currentTime;
+            if(doHabituation && timeDiff < habituationCpt){
 
-
-            if (!trackIkinGazeCtrl(currentTrackRect) ) {
-
-                doHabituation?habituationCpt--:0;
-
+                yDebug("TimeDiff is %f", timeDiff);
+                yInfo("Stop tracking because of fixed target");
+                stopTracking();
             }
 
-            if (enableLog && frequencyAcquisitionCounter > 5) {
+
+
+
+            bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
+
+            if (enableLog && frequencyAcquisitionCounter > -1 ) {
                 logTrack(inputImageMat, currentTrackRect);
                 frequencyAcquisitionCounter = 0;
             } else {
@@ -185,13 +201,12 @@ void objectTrackingRateThread::run() {
                 trackerOutputPort.write();
             }
 
-        } else {
-            if(this->habituationCpt==0){
-                yInfo("Stop tracking because of fixed target");
-            }
+        }
+
+        else{
+            yInfo("Loose target stop tracking ");
+
             stopTracking();
-
-
         }
 
     }
@@ -204,6 +219,8 @@ void objectTrackingRateThread::threadRelease() {
     iGaze->stopControl();
     iGaze->restoreContext(ikinGazeCtrl_Startcontext);
     clientGaze->close();
+
+    this->anglePositionPort.close();
 
     templateImageInputPort.close();
     inputImagePort.close();
@@ -313,7 +330,6 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
     yDebug("Distance is %f", distancePreviousCurrent);
 
 
-    yDebug("TimeDiff is %f", timeDiff);
 
 
     if (distancePreviousCurrent > 20 ) {
@@ -326,9 +342,8 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
         yInfo("Position  is %f %f %f", rootFramePosition[0], rootFramePosition[1], rootFramePosition[2]);
 
         iGaze->lookAtFixationPoint(rootFramePosition);
-        habituationCpt = 100;
 
-        currentTime = timer.now();
+//        currentTime = timer.now();
         ret = true;
 
 
@@ -379,7 +394,13 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t
 bool
 objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax) {
 
+    azimuth = -99;
+    elevation = -99;
+    vergence = -99;
+
     if (inputImagePort.getInputCount()) {
+
+        currentTime = timer.now();
 
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
         const cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
@@ -389,6 +410,7 @@ objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yM
 
         ROITemplateToTrack = cv::Rect2d(xMin, yMin, std::abs(xMax - xMin), std::abs(yMax - yMin));
         initializeTracker(inputImageMat, ROITemplateToTrack);
+        getAnglesHead(azimuth, elevation, vergence);
 
     }
 
@@ -413,14 +435,13 @@ void objectTrackingRateThread::setTrackingState(bool trackingState) {
 }
 
 void objectTrackingRateThread::stopTracking() {
-    habituationCpt = 10000;
 
     trackingState = false;
     Vector anglesHome(3);
     anglesHome[0] = 0.0;
     anglesHome[1] = 0.0;
     anglesHome[2] = 0.0;
-    iGaze->lookAtAbsAngles(anglesHome);
+//    iGaze->lookAtAbsAngles(anglesHome);
 }
 
 void objectTrackingRateThread::setEnable_log(bool enable_log) {
@@ -428,6 +449,7 @@ void objectTrackingRateThread::setEnable_log(bool enable_log) {
 }
 
 void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
+
 
     time_t currentTime = time(0);
     const tm *currentTimeStruct = localtime(&currentTime);
@@ -437,7 +459,7 @@ void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
     logging.open(logFileName, std::ofstream::out | std::ios::app);
 
     if (writeHeader) {
-        logging << "filename,xmin,ymin,xmax,ymax\n";
+        logging << "filename,xmin,ymin,xmax,ymax,azimuth,elevation,vergence\n";
         writeHeader = false;
 
     }
@@ -446,13 +468,16 @@ void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
  + "-" + to_string(1900 + currentTimeStruct->tm_year) + "_" + to_string(currentTimeStruct->tm_hour) \
  + to_string(currentTimeStruct->tm_min);
 
-    const string image_name = "log" + to_string(counterFile) + "_" + dateTime + ".jpeg";
+    const string image_name = "log" + to_string(counterFile) + "_" + dateTime + "-" + to_string(new_interaction_counter)+".jpeg";
 
     cv::imwrite(this->logPath + "/images/" + image_name, image);
 
     logging << image_name + "," + to_string(roi.tl().x) + "," + to_string(roi.tl().y) + ","
                + to_string(roi.br().x) + ","
-               + to_string(roi.br().y) + "\n";
+               + to_string(roi.br().y) + ","
+               + to_string(azimuth) +  ","
+               + to_string(elevation) +  ","
+               + to_string(vergence)+ "\n";
     logging.close();
     ++counterFile;
 }
@@ -470,6 +495,22 @@ void objectTrackingRateThread::setLog_path(const string &log_path) {
 
 std::string objectTrackingRateThread::getLog_path() {
     return this->logPath;
+}
+
+void objectTrackingRateThread::incrementInteractionCounter() {
+    this->new_interaction_counter++;
+
+}
+
+void objectTrackingRateThread::getAnglesHead(double &azimuth, double &elevation, double &vergence) {
+    if (anglePositionPort.getInputCount()) {
+        Bottle *anglesBottle = anglePositionPort.read();
+
+        azimuth = anglesBottle->get(0).asDouble();
+        elevation =anglesBottle->get(1).asDouble();
+        vergence =anglesBottle->get(2).asDouble();
+
+    }
 }
 
 

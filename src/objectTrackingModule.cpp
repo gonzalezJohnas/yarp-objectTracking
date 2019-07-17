@@ -174,9 +174,12 @@ bool objectTrackingModule::respond(const Bottle &command, Bottle &reply) {
                         else if (!rThread->isTrackingState()) {
                             if (command.get(2).isNull()) {
                                 ok = rThread->setTemplateFromImage();
+                                rThread->incrementInteractionCounter();
                             } else {
                                 ok = rThread->setTemplateFromCoordinate(command.get(2).asInt(), command.get(3).asInt(),
                                                                         command.get(4).asInt(), command.get(5).asInt());
+                                rThread->incrementInteractionCounter();
+
                             }
                         }
 

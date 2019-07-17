@@ -64,7 +64,9 @@ private:
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageOutputPort;                                // input template Image  of the object to track
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // output Image with the ROI tracked
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;                                // input Image in which the tracking is perform
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;
+    yarp::os::BufferedPort<yarp::os::Bottle> anglePositionPort;
+// input Image in which the tracking is perform
 
 
     //iKinGazeCtrl parameters
@@ -79,7 +81,8 @@ private:
     bool enableLog, writeHeader;
     std::string logPath;
     std::string logFileName;
-    int counterFile, frequencyAcquisitionCounter;
+    int counterFile, frequencyAcquisitionCounter, new_interaction_counter;
+    double azimuth, elevation, vergence;
 
 
     // Habituation decay factor
@@ -157,6 +160,8 @@ private:
 
     void stopTracking();
 
+    void incrementInteractionCounter();
+
 
 private :
 
@@ -178,6 +183,8 @@ private :
 
 
     void logTrack(cv::Mat image, cv::Rect2d roi);
+
+    void getAnglesHead(double &azimuth, double &elevation, double &vergence);
 
 };
 
