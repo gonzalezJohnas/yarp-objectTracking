@@ -70,7 +70,7 @@ private:
 
 
     //iKinGazeCtrl parameters
-    int ikinGazeCtrl_Startcontext;
+    int ikinGazeCtrl_Startcontext, gaze_context;
     yarp::dev::PolyDriver* clientGaze;
     yarp::dev::IGazeControl *iGaze;
     bool enableSaccade;

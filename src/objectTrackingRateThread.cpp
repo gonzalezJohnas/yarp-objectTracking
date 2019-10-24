@@ -58,7 +58,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
 
     doHabituation = rf.check("habituation", Value(false)).asBool();
     habituationCpt = rf.check("habituation_cpt", Value(25), "habituation threshold in seconds").asInt();;
-    const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.)).asDouble();
+    const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.0)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
 
 
@@ -100,11 +100,11 @@ bool objectTrackingRateThread::threadInit() {
         return false;  // unable to open; let RFModule know so that it won't run
     }
 
-    if (!NetworkBase::connect("/iKinGazeCtrl/angles:o", anglePositionPort.getName())) {
-        yInfo("Unable to connect to iKinGazeCtrl/angles:o check that IkInGazeCtrl is running");
-        return false;
-
-    }
+//    if (!NetworkBase::connect("/iKinGazeCtrl/angles:o", anglePositionPort.getName())) {
+//        yInfo("Unable to connect to iKinGazeCtrl/angles:o check that IkInGazeCtrl is running");
+//        return false;
+//
+//    }
 
 
 
@@ -126,7 +126,7 @@ bool objectTrackingRateThread::threadInit() {
 
     currentTime = 0;
 
-    const bool ret = openIkinGazeCtrl();
+    const bool ret = true; //openIkinGazeCtrl();
     return ret;
 }
 
@@ -167,8 +167,8 @@ void objectTrackingRateThread::run() {
 
 
 
-            bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
-
+//            bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
+//
             if (enableLog && frequencyAcquisitionCounter > -1 ) {
                 logTrack(inputImageMat, currentTrackRect);
                 frequencyAcquisitionCounter = 0;
@@ -227,26 +227,7 @@ void objectTrackingRateThread::threadRelease() {
     trackerOutputPort.close();
 }
 
-bool objectTrackingRateThread::setTemplateFromImage() {
 
-    if (templateImageInputPort.getInputCount() && inputImagePort.getInputCount()) {
-        ImageOf<yarp::sig::PixelBgr> *templateImage = templateImageInputPort.read(true);
-        const cv::Mat templateMat = yarp::cv::toCvMat(*templateImage);
-
-        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
-        const cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
-
-        ROITemplateToTrack = cv::selectROI(inputImageMat, false);
-
-        initializeTracker(inputImageMat, ROITemplateToTrack);
-
-        cv::destroyAllWindows();
-
-        return true;
-    }
-
-    return false;
-}
 
 void objectTrackingRateThread::setTracker() {
 
@@ -293,7 +274,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
     iGaze->storeContext(&ikinGazeCtrl_Startcontext);
 
 
-//    iGaze->setSaccadesMode(enableSaccade);
+    iGaze->setSaccadesMode(enableSaccade);
     //Set trajectory time:
     iGaze->blockNeckRoll(0.0);
 
@@ -302,6 +283,8 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 //    iGaze->setTrackingMode(true);
 //    iGaze->setVORGain(1.3);
 //    iGaze->setOCRGain(0.7);
+
+    iGaze->storeContext(&gaze_context);
 
     yDebug("Initialization of iKingazeCtrl completed");
     return true;
@@ -362,6 +345,10 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 
 bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv::Rect2d t_ROIToTrack) {
 
+
+    iGaze->restoreContext(gaze_context);
+
+
     currentTrackRect = t_ROIToTrack;
     if (trackerType == "KF-EBT") {
 
@@ -382,7 +369,7 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t
         ret = tracker->update(t_image, *t_ROITrackResult);
     } else if (trackerType == "KF-EBT") {
         *t_ROITrackResult = kalmanFilterEnsembleBasedTracker.track(t_image);
-        if (!checkROI(t_ROITrackResult)) {
+        if (t_ROITrackResult->width == 0) {
             ret = false;
         }
     }
@@ -391,8 +378,45 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t
 
 }
 
-bool
-objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax) {
+
+bool objectTrackingRateThread::setTemplateFromImage() {
+
+    if ( inputImagePort.getInputCount()) {
+        ImageOf<yarp::sig::PixelBgr> *templateImage = templateImageInputPort.read(true);
+        const cv::Mat templateMat = yarp::cv::toCvMat(*templateImage);
+
+
+        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
+        const cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
+
+        cv::Mat result_match;
+        int result_cols =  inputImageMat.cols - templateMat.cols + 1;
+        int result_rows = inputImageMat.rows - templateMat.rows + 1;
+        result_match.create( result_rows, result_cols, CV_32FC1 );
+
+
+        cv::matchTemplate( inputImageMat, templateMat, result_match, cv::TM_CCOEFF_NORMED );
+        cv::normalize( result_match, result_match, 0, 1, cv::NORM_MINMAX, -1, Mat() );
+        double minVal; double maxVal; cv::Point minLoc; cv::Point maxLoc;
+        cv::Point matchLoc;
+        cv::minMaxLoc( result_match, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+        matchLoc = maxLoc;
+
+        yInfo("Maximun value %f", maxVal);
+        widthInputImage = inputImageMat.cols;
+        heightInputImage = inputImageMat.rows;
+
+        ROITemplateToTrack = cv::Rect2d(matchLoc, cv::Point( matchLoc.x + templateMat.cols , matchLoc.y + templateMat.rows ));
+        initializeTracker(inputImageMat, ROITemplateToTrack);
+
+
+        return true;
+    }
+
+    return false;
+}
+
+bool objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax) {
 
     azimuth = -99;
     elevation = -99;
@@ -441,6 +465,8 @@ void objectTrackingRateThread::stopTracking() {
     anglesHome[0] = 0.0;
     anglesHome[1] = 0.0;
     anglesHome[2] = 0.0;
+
+    iGaze->restoreContext(ikinGazeCtrl_Startcontext);
 //    iGaze->lookAtAbsAngles(anglesHome);
 }
 

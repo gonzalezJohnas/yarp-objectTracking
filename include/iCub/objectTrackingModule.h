@@ -129,18 +129,18 @@
 #include <iCub/objectTrackingRateThread.h>
 
 // general command vocab's
-#define COMMAND_VOCAB_OK                 VOCAB2('o','k')
+#define COMMAND_VOCAB_OK                 yarp::os::createVocab('o','k')
 
-#define COMMAND_VOCAB_SET                VOCAB3('s','e','t')
-#define COMMAND_VOCAB_GET                VOCAB3('g','e','t')
-#define COMMAND_VOCAB_RUN                VOCAB3('r','u','n')
-#define COMMAND_VOCAB_SUSPEND            VOCAB3('s','u','s')
-#define COMMAND_VOCAB_RESUME             VOCAB3('r','e','s')
-#define COMMAND_VOCAB_LOG             VOCAB3('l','o','g')
+#define COMMAND_VOCAB_SET                yarp::os::createVocab('s','e','t')
+#define COMMAND_VOCAB_GET                yarp::os::createVocab('g','e','t')
+#define COMMAND_VOCAB_RUN                yarp::os::createVocab('r','u','n')
+#define COMMAND_VOCAB_SUSPEND            yarp::os::createVocab('s','u','s')
+#define COMMAND_VOCAB_RESUME             yarp::os::createVocab('r','e','s')
+#define COMMAND_VOCAB_LOG             yarp::os::createVocab('l','o','g')
 
-#define COMMAND_VOCAB_HELP               VOCAB4('h','e','l','p')
-#define COMMAND_VOCAB_FAILED             VOCAB4('f','a','i','l')
-#define COMMAND_VOCAB_TRACK              VOCAB4('t','r','a','c')
+#define COMMAND_VOCAB_HELP               yarp::os::createVocab('h','e','l','p')
+#define COMMAND_VOCAB_FAILED             yarp::os::createVocab('f','a','i','l')
+#define COMMAND_VOCAB_TRACK              yarp::os::createVocab('t','r','a','c')
 
 
 class objectTrackingModule:public yarp::os::RFModule {
