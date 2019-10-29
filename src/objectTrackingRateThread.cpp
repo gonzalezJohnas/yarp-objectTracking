@@ -29,6 +29,9 @@
 #include <sys/stat.h>
 #include <yarp/cv/Cv.h>
 
+#include "eco/eco.hpp"
+#include "eco/parameters.hpp"
+
 using namespace yarp::dev;
 using namespace yarp::os;
 using namespace yarp::sig;
@@ -51,7 +54,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
                      "robot name (string)").asString();;
 
     trackerType = rf.check("trackerType",
-                           Value("KF-EBT"),
+                           Value("ECO"),
                            "tracker type (string)").asString();
 
     enableSaccade = rf.check("saccade", Value(false)).asBool();
@@ -61,6 +64,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
     const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.0)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
 
+//    ecoParameters.max_score_threshhold = 0.15;
 
 }
 
@@ -100,11 +104,11 @@ bool objectTrackingRateThread::threadInit() {
         return false;  // unable to open; let RFModule know so that it won't run
     }
 
-//    if (!NetworkBase::connect("/iKinGazeCtrl/angles:o", anglePositionPort.getName())) {
-//        yInfo("Unable to connect to iKinGazeCtrl/angles:o check that IkInGazeCtrl is running");
-//        return false;
-//
-//    }
+    if (!NetworkBase::connect("/iKinGazeCtrl/angles:o", anglePositionPort.getName())) {
+        yInfo("Unable to connect to iKinGazeCtrl/angles:o check that IkInGazeCtrl is running");
+        return false;
+
+    }
 
 
 
@@ -126,7 +130,7 @@ bool objectTrackingRateThread::threadInit() {
 
     currentTime = 0;
 
-    const bool ret = true; //openIkinGazeCtrl();
+    const bool ret = openIkinGazeCtrl();
     return ret;
 }
 
@@ -153,13 +157,13 @@ void objectTrackingRateThread::run() {
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
         cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
 
-        const bool successTracking = trackingPrediction(inputImageMat, &currentTrackRect);
+        const bool successTracking = trackingPrediction(inputImageMat, currentTrackRect);
 
         if (successTracking  ) {
 
             if(doHabituation && timeDiff < habituationCpt){
 
-                yDebug("TimeDiff is %f", timeDiff);
+                yInfo("TimeDiff is %f", timeDiff);
                 yInfo("Stop tracking because of fixed target");
                 stopTracking();
             }
@@ -167,8 +171,8 @@ void objectTrackingRateThread::run() {
 
 
 
-//            bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
-//
+            bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
+
             if (enableLog && frequencyAcquisitionCounter > -1 ) {
                 logTrack(inputImageMat, currentTrackRect);
                 frequencyAcquisitionCounter = 0;
@@ -244,11 +248,12 @@ void objectTrackingRateThread::setTracker() {
         tracker = TrackerGOTURN::create();
 
     if (trackerType == "KF-EBT") {
-        kalmanFilterEnsembleBasedTracker.init("AKV");
+        kalmanFilterEnsembleBasedTracker.init("ACK");
         yInfo("Using ensemble based tracker with threshold uncertainty %f",
               kalmanFilterEnsembleBasedTracker.getThresholdUncertainty());
 
     }
+
 
 }
 
@@ -256,7 +261,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 
 
     //---------------------------------------------------------------
-    yDebug("Opening the connection to the iKinGaze");
+    yInfo("Opening the connection to the iKinGaze");
     Property optGaze; //("(device gazecontrollerclient)");
     optGaze.put("device", "gazecontrollerclient");
     optGaze.put("remote", "/iKinGazeCtrl");
@@ -265,7 +270,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
     clientGaze = new PolyDriver();
     clientGaze->open(optGaze);
     iGaze = nullptr;
-    yDebug("Connecting to the iKinGaze");
+    yInfo("Connecting to the iKinGaze");
     if (!clientGaze->isValid()) {
         return false;
     }
@@ -277,6 +282,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
     iGaze->setSaccadesMode(enableSaccade);
     //Set trajectory time:
     iGaze->blockNeckRoll(0.0);
+    iGaze->clearNeckPitch();
 
 //    iGaze->setNeckTrajTime(0.5);
 //    iGaze->setEyesTrajTime(0.2);
@@ -286,7 +292,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 
     iGaze->storeContext(&gaze_context);
 
-    yDebug("Initialization of iKingazeCtrl completed");
+    yInfo("Initialization of iKingazeCtrl completed");
     return true;
 }
 
@@ -310,7 +316,7 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
     const double distancePreviousCurrent = sqrt(
             pow((imagePositionX - previousImagePosX), 2) + pow((imagePositionY - previousImagePosY), 2));
 
-    yDebug("Distance is %f", distancePreviousCurrent);
+    yInfo("Distance is %f", distancePreviousCurrent);
 
 
 
@@ -354,7 +360,15 @@ bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv
 
         kalmanFilterEnsembleBasedTracker.initTrackers(t_image, t_ROIToTrack);
         trackingState = true;
-    } else {
+    }
+
+
+    else if (trackerType == "ECO"){
+        ecotracker.init(const_cast<Mat &>(t_image), t_ROIToTrack, ecoParameters);
+        trackingState = true;
+
+    }
+    else {
         tracker->init(t_image, t_ROIToTrack);
         trackingState = true;
 
@@ -362,16 +376,27 @@ bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv
     return false;
 }
 
-bool objectTrackingRateThread::trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROITrackResult) {
+bool objectTrackingRateThread::trackingPrediction(cv::Mat &t_image, cv::Rect2d &t_ROITrackResult) {
 
     bool ret = true;
     if (tracker) {
-        ret = tracker->update(t_image, *t_ROITrackResult);
+        ret = tracker->update(t_image, t_ROITrackResult);
     } else if (trackerType == "KF-EBT") {
-        *t_ROITrackResult = kalmanFilterEnsembleBasedTracker.track(t_image);
-        if (t_ROITrackResult->width == 0) {
+        t_ROITrackResult = kalmanFilterEnsembleBasedTracker.track(t_image);
+        if (t_ROITrackResult.width == 0) {
             ret = false;
         }
+    }
+
+    else if (trackerType == "ECO"){
+        cv::Rect2f ecoBox;
+        ret = ecotracker.update(t_image, ecoBox);
+        t_ROITrackResult.x = ecoBox.x ;
+        t_ROITrackResult.y = ecoBox.y ;
+        t_ROITrackResult.width = ecoBox.width;
+        t_ROITrackResult.height = ecoBox.height ;
+
+
     }
 
     return ret;
@@ -467,7 +492,7 @@ void objectTrackingRateThread::stopTracking() {
     anglesHome[2] = 0.0;
 
     iGaze->restoreContext(ikinGazeCtrl_Startcontext);
-//    iGaze->lookAtAbsAngles(anglesHome);
+    iGaze->lookAtAbsAngles(anglesHome);
 }
 
 void objectTrackingRateThread::setEnable_log(bool enable_log) {

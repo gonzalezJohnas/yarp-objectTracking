@@ -39,6 +39,8 @@
 
 #include <iCub/kfebt/kfebtracker.h>
 
+#include "eco/eco.hpp"
+
 class objectTrackingRateThread : public yarp::os::RateThread {
 private:
     bool result;                    //result of the processing
@@ -53,6 +55,8 @@ private:
     std::string trackerType;
     cv::Ptr<cv::Tracker> tracker;
     KFebTracker kalmanFilterEnsembleBasedTracker;
+    eco::ECO ecotracker;
+    eco::EcoParameters ecoParameters;
     cv::Rect2d ROITemplateToTrack, currentTrackRect;
     bool trackingState;
     yarp::os::SystemClock timer;
@@ -177,7 +181,7 @@ private :
 
     bool initializeTracker(cv::Mat t_image, cv::Rect2d t_ROIToTrack);
 
-    bool trackingPrediction(cv::Mat t_image, cv::Rect2d *t_ROIToTrack);
+    bool trackingPrediction(cv::Mat &t_image, cv::Rect2d &t_ROIToTrack);
 
     bool checkROI(cv::Rect2d *t_ROI);
 
