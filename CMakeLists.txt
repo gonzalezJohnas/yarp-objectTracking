@@ -10,6 +10,8 @@ project(${KEYWORD})
 
 set(ICUB_CONTRIB_DIRS $ENV{ICUB_DIR}/include)
 
+set(OpenTracker_INCLUDE_DIR /usr/local/include/opentracker)
+
 FIND_PACKAGE(YARP REQUIRED)
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(ICUBcontrib REQUIRED)
@@ -33,7 +35,10 @@ INCLUDE_DIRECTORIES(
         ${PROJECT_SOURCE_DIR}/include
         ${YARP_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
-        /usr/local/src/robot/yarp/src/libYARP_cv/include
+        ${OpenTracker_INCLUDE_DIR}
+        /home/jonas/yarp/src/libYARP_cv/include
+
+
 )
 
 # Search for source code.
@@ -42,7 +47,7 @@ FILE(GLOB folder_header include/iCub/*.h include/iCub/kfebt/*.h include/iCub/kfe
 SOURCE_GROUP("Source Files" FILES ${folder_source})
 SOURCE_GROUP("Header Files" FILES ${folder_header})
 
-
+find_library(OpenTracker_LIBS libopentracker.so /usr/local/lib)
 set(ICUB_APPLICATIONS_PREFIX "$ENV{ICUB_ROOT}" CACHE PATH "Application path prefix")
 # Set up our main executable
 IF (folder_source)
@@ -54,6 +59,7 @@ IF (folder_source)
     TARGET_LINK_LIBRARIES( ${KEYWORD}
             ${YARP_LIBRARIES}
             ${OpenCV_LIBS}
+            ${OpenTracker_LIBS}
             )
 
     install(TARGETS  ${KEYWORD} DESTINATION bin)

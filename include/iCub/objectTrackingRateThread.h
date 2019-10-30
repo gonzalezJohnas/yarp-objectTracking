@@ -42,57 +42,6 @@
 #include "eco/eco.hpp"
 
 class objectTrackingRateThread : public yarp::os::RateThread {
-private:
-    bool result;                    //result of the processing
-
-    std::string robot;              // name of the robot
-    std::string inputPortName;      // name of input port for incoming events,
-    std::string name;               // rootname of all the ports opened by this thread
-    int widthInputImage;
-    int heightInputImage;
-
-    //Tracker parameters
-    std::string trackerType;
-    cv::Ptr<cv::Tracker> tracker;
-    KFebTracker kalmanFilterEnsembleBasedTracker;
-    eco::ECO ecotracker;
-    eco::EcoParameters ecoParameters;
-    cv::Rect2d ROITemplateToTrack, currentTrackRect;
-    bool trackingState;
-    yarp::os::SystemClock timer;
-    double timeDiff;
-
-
-
-    yarp::os::BufferedPort <yarp::os::Bottle> inputTargetCoordinate;                                //
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageOutputPort;                                // input template Image  of the object to track
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // output Image with the ROI tracked
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;
-    yarp::os::BufferedPort<yarp::os::Bottle> anglePositionPort;
-// input Image in which the tracking is perform
-
-
-    //iKinGazeCtrl parameters
-    int ikinGazeCtrl_Startcontext, gaze_context;
-    yarp::dev::PolyDriver* clientGaze;
-    yarp::dev::IGazeControl *iGaze;
-    bool enableSaccade;
-
-    double previousImagePosX, previousImagePosY;
-
-    // Log parameters
-    bool enableLog, writeHeader;
-    std::string logPath;
-    std::string logFileName;
-    int counterFile, frequencyAcquisitionCounter, new_interaction_counter;
-    double azimuth, elevation, vergence;
-
-
-    // Habituation decay factor
-    int habituationCpt;
-    double currentTime;
-    bool doHabituation;
 
  public:
     /**
@@ -141,11 +90,6 @@ private:
     */
     std::string getName(const char *p);
 
-    /**
-    * function that sets the inputPort name
-    */
-    void setInputPortName(std::string inpPrtName);
-
     bool setTemplateFromImage();
 
     bool setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax );
@@ -169,6 +113,56 @@ private:
 
 private :
 
+    std::string robot;              // name of the robot
+    std::string name;               // rootname of all the ports opened by this thread
+    int drivingCamera{};
+    int widthInputImage{};
+    int heightInputImage{};
+
+    //Tracker parameters
+    std::string trackerType;
+    cv::Ptr<cv::Tracker> tracker;
+    KFebTracker kalmanFilterEnsembleBasedTracker;
+    eco::ECO ecotracker;
+    eco::EcoParameters ecoParameters;
+    cv::Rect2d ROITemplateToTrack, currentTrackRect;
+    bool trackingState{};
+    yarp::os::SystemClock timer;
+    double timeDiff{};
+
+
+
+    yarp::os::BufferedPort <yarp::os::Bottle> inputTargetCoordinate;                                //
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageOutputPort;                                // input template Image  of the object to track
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // output Image with the ROI tracked
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;
+    yarp::os::BufferedPort<yarp::os::Bottle> anglePositionPort;
+
+    // input Image in which the tracking is perform
+    cv::Mat inputImageMat, templateOutputMat, outputMat;
+
+    //iKinGazeCtrl parameters
+    int ikinGazeCtrl_Startcontext{}, gaze_context{};
+    yarp::dev::PolyDriver* clientGaze{};
+    yarp::dev::IGazeControl *iGaze{};
+    bool enableSaccade, enableTracking{};
+
+    double previousImagePosX{}, previousImagePosY{};
+
+    // Log parameters
+    bool enableLog{}, writeHeader{};
+    std::string logPath;
+    std::string logFileName;
+    int counterFile{}, frequencyAcquisitionCounter{}, new_interaction_counter{};
+    double azimuth{}, elevation{}, vergence{};
+
+
+    // Habituation decay factor
+    int habituationCpt{};
+    double currentTime{};
+    bool doHabituation{};
+
 
     //******************************************************************************************************************
 
@@ -177,7 +171,7 @@ private :
 
     bool openIkinGazeCtrl();
 
-    bool trackIkinGazeCtrl( cv:: Rect2d);
+    bool trackIkinGazeCtrl(const cv:: Rect2d &track_roi);
 
     bool initializeTracker(cv::Mat t_image, cv::Rect2d t_ROIToTrack);
 
@@ -186,9 +180,9 @@ private :
     bool checkROI(cv::Rect2d *t_ROI);
 
 
-    void logTrack(cv::Mat image, cv::Rect2d roi);
+    void logTrack(cv::Mat &image, cv::Rect2d &roi);
 
-    void getAnglesHead(double &azimuth, double &elevation, double &vergence);
+    void getAnglesHead();
 
 };
 

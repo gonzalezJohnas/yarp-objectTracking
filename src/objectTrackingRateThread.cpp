@@ -46,6 +46,8 @@ objectTrackingRateThread::objectTrackingRateThread() : RateThread(THRATE) {
     trackerType = "KF-EBT";
     enableSaccade = false;
 
+
+
 }
 
 objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf) : RateThread(THRATE) {
@@ -60,17 +62,25 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
     enableSaccade = rf.check("saccade", Value(false)).asBool();
 
     doHabituation = rf.check("habituation", Value(false)).asBool();
-    habituationCpt = rf.check("habituation_cpt", Value(25), "habituation threshold in seconds").asInt();;
+    habituationCpt = rf.check("habituation_cpt", Value(25), "habituation threshold in seconds").asInt();
+
+    enableTracking = rf.check("tracking", Value(true)).asBool();
+    drivingCamera = rf.check("camera",
+                             Value("0"),
+                             "driving camera (string)").asInt();
+
     const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.0)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
 
 //    ecoParameters.max_score_threshhold = 0.15;
 
+    azimuth = -99;
+    elevation = -99;
+    vergence = -99;
+
 }
 
-objectTrackingRateThread::~objectTrackingRateThread() {
-    // do nothing
-}
+objectTrackingRateThread::~objectTrackingRateThread() = default ;
 
 bool objectTrackingRateThread::threadInit() {
 
@@ -104,11 +114,8 @@ bool objectTrackingRateThread::threadInit() {
         return false;  // unable to open; let RFModule know so that it won't run
     }
 
-    if (!NetworkBase::connect("/iKinGazeCtrl/angles:o", anglePositionPort.getName())) {
-        yInfo("Unable to connect to iKinGazeCtrl/angles:o check that IkInGazeCtrl is running");
-        return false;
 
-    }
+
 
 
 
@@ -130,8 +137,9 @@ bool objectTrackingRateThread::threadInit() {
 
     currentTime = 0;
 
-    const bool ret = openIkinGazeCtrl();
-    return ret;
+    if(enableTracking) {    return openIkinGazeCtrl();    }
+
+    return true;
 }
 
 void objectTrackingRateThread::setName(string str) {
@@ -144,18 +152,13 @@ std::string objectTrackingRateThread::getName(const char *p) {
     return str;
 }
 
-void objectTrackingRateThread::setInputPortName(string InpPort) {
-}
-
 void objectTrackingRateThread::run() {
-
-
 
     if (inputImagePort.getInputCount() && trackingState) {
         timeDiff = timer.now() - currentTime;
 
         ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
-        cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
+        inputImageMat = yarp::cv::toCvMat(*inputImage);
 
         const bool successTracking = trackingPrediction(inputImageMat, currentTrackRect);
 
@@ -168,10 +171,10 @@ void objectTrackingRateThread::run() {
                 stopTracking();
             }
 
+            if(enableTracking){
 
-
-
-            bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
+                bool targetMoove = trackIkinGazeCtrl(currentTrackRect);
+            }
 
             if (enableLog && frequencyAcquisitionCounter > -1 ) {
                 logTrack(inputImageMat, currentTrackRect);
@@ -182,25 +185,25 @@ void objectTrackingRateThread::run() {
 
             if (templateImageOutputPort.getOutputCount()) {
 
-                cv::Mat outputTemplate = inputImageMat(currentTrackRect).clone();
+                templateOutputMat = inputImageMat(currentTrackRect).clone();
                 // Display frame.
 
                 yarp::sig::ImageOf<yarp::sig::PixelBgr> &outputTemplateImage = templateImageOutputPort.prepare();
 
 
-                outputTemplateImage = yarp::cv::fromCvMat<PixelBgr>(outputTemplate);
+                outputTemplateImage = yarp::cv::fromCvMat<PixelBgr>(templateOutputMat);
                 templateImageOutputPort.write();
 
             }
 
             if (trackerOutputPort.getOutputCount()) {
                 // Display frame.
+                outputMat = inputImageMat.clone();
 
-                cv::rectangle(inputImageMat, currentTrackRect, cv::Scalar(255, 0, 0), 2, 1);
+                cv::rectangle(outputMat, currentTrackRect, cv::Scalar(255, 0, 0), 2, 1);
                 yarp::sig::ImageOf<yarp::sig::PixelBgr> &outputTrackImage = trackerOutputPort.prepare();
 
-                outputTrackImage =  yarp::cv::fromCvMat<PixelBgr>(inputImageMat);
-
+                outputTrackImage =  yarp::cv::fromCvMat<PixelBgr>(outputMat);
 
                 trackerOutputPort.write();
             }
@@ -296,7 +299,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
     return true;
 }
 
-bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
+bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d &t_trackZone) {
 
 
     // Calcul the center of the Rectangle
@@ -310,7 +313,7 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
     imageFramePosition[1] = imagePositionY;
 
     // On the 3D frame reference of the robot the X axis is the depth
-    bool ret = iGaze->get3DPoint(0, imageFramePosition, 1.0, rootFramePosition);
+    iGaze->get3DPoint(0, imageFramePosition, 1.0, rootFramePosition);
 
     // Calcul the Euclidian distance in image plane
     const double distancePreviousCurrent = sqrt(
@@ -318,41 +321,29 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d t_trackZone) {
 
     yInfo("Distance is %f", distancePreviousCurrent);
 
-
-
+    previousImagePosX = imagePositionX;
+    previousImagePosY = imagePositionY;
 
     if (distancePreviousCurrent > 20 ) {
-        previousImagePosX = imagePositionX;
-        previousImagePosY = imagePositionY;
-
 
         // Storing the previous coordinate in the Robot frame reference
 
         yInfo("Position  is %f %f %f", rootFramePosition[0], rootFramePosition[1], rootFramePosition[2]);
+//        iGaze->lookAtFixationPoint(rootFramePosition);
 
-        iGaze->lookAtFixationPoint(rootFramePosition);
+        iGaze->lookAtMonoPixel(drivingCamera, imageFramePosition );
 
-//        currentTime = timer.now();
-        ret = true;
-
+       return true;
 
     }
 
-    else{
-        ret = false;
-    }
-
-
-
-
-
-    return ret;
+    return false;
 }
 
 bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv::Rect2d t_ROIToTrack) {
 
 
-    iGaze->restoreContext(gaze_context);
+    if(enableTracking) iGaze->restoreContext(gaze_context);
 
 
     currentTrackRect = t_ROIToTrack;
@@ -381,7 +372,8 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat &t_image, cv::Rect2d &
     bool ret = true;
     if (tracker) {
         ret = tracker->update(t_image, t_ROITrackResult);
-    } else if (trackerType == "KF-EBT") {
+    }
+    else if (trackerType == "KF-EBT") {
         t_ROITrackResult = kalmanFilterEnsembleBasedTracker.track(t_image);
         if (t_ROITrackResult.width == 0) {
             ret = false;
@@ -407,12 +399,12 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat &t_image, cv::Rect2d &
 bool objectTrackingRateThread::setTemplateFromImage() {
 
     if ( inputImagePort.getInputCount()) {
-        ImageOf<yarp::sig::PixelBgr> *templateImage = templateImageInputPort.read(true);
-        const cv::Mat templateMat = yarp::cv::toCvMat(*templateImage);
+        ImageOf<yarp::sig::PixelBgr> *yarp_templateImage = templateImageInputPort.read(true);
+        const cv::Mat templateMat = yarp::cv::toCvMat(*yarp_templateImage);
 
 
-        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
-        const cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
+        ImageOf<yarp::sig::PixelBgr> *yarp_image = inputImagePort.read(true);
+        inputImageMat = yarp::cv::toCvMat(*yarp_image);
 
         cv::Mat result_match;
         int result_cols =  inputImageMat.cols - templateMat.cols + 1;
@@ -443,27 +435,26 @@ bool objectTrackingRateThread::setTemplateFromImage() {
 
 bool objectTrackingRateThread::setTemplateFromCoordinate(const int xMin, const int yMin, const int xMax, const int yMax) {
 
-    azimuth = -99;
-    elevation = -99;
-    vergence = -99;
+
 
     if (inputImagePort.getInputCount()) {
 
         currentTime = timer.now();
 
-        ImageOf<yarp::sig::PixelBgr> *inputImage = inputImagePort.read(true);
-        const cv::Mat inputImageMat = yarp::cv::toCvMat(*inputImage);
+        ImageOf<yarp::sig::PixelBgr> *yarp_image = inputImagePort.read(true);
+        inputImageMat = yarp::cv::toCvMat(*yarp_image);
 
         widthInputImage = inputImageMat.cols;
         heightInputImage = inputImageMat.rows;
 
         ROITemplateToTrack = cv::Rect2d(xMin, yMin, std::abs(xMax - xMin), std::abs(yMax - yMin));
         initializeTracker(inputImageMat, ROITemplateToTrack);
-        getAnglesHead(azimuth, elevation, vergence);
+        getAnglesHead();
 
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool objectTrackingRateThread::checkROI(cv::Rect2d *t_ROI) {
@@ -479,31 +470,35 @@ bool objectTrackingRateThread::isTrackingState() const {
     return trackingState;
 }
 
-void objectTrackingRateThread::setTrackingState(bool trackingState) {
-    objectTrackingRateThread::trackingState = trackingState;
+void objectTrackingRateThread::setTrackingState(bool p_trackingState) {
+    objectTrackingRateThread::trackingState = p_trackingState;
 }
 
 void objectTrackingRateThread::stopTracking() {
 
     trackingState = false;
-    Vector anglesHome(3);
-    anglesHome[0] = 0.0;
-    anglesHome[1] = 0.0;
-    anglesHome[2] = 0.0;
 
-    iGaze->restoreContext(ikinGazeCtrl_Startcontext);
-    iGaze->lookAtAbsAngles(anglesHome);
+
+    if(enableTracking){
+        Vector anglesHome(3);
+        anglesHome[0] = 0.0;
+        anglesHome[1] = 0.0;
+        anglesHome[2] = 0.0;
+        iGaze->restoreContext(ikinGazeCtrl_Startcontext);
+        iGaze->lookAtAbsAngles(anglesHome);
+
+    }
 }
 
 void objectTrackingRateThread::setEnable_log(bool enable_log) {
     this->enableLog = enable_log;
 }
 
-void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
+void objectTrackingRateThread::logTrack(cv::Mat &image, cv::Rect2d &roi) {
 
 
-    time_t currentTime = time(0);
-    const tm *currentTimeStruct = localtime(&currentTime);
+    time_t current_time = time(nullptr);
+    const tm *currentTimeStruct = localtime(&current_time);
 
     std::ofstream logging;
 
@@ -534,7 +529,7 @@ void objectTrackingRateThread::logTrack(cv::Mat image, cv::Rect2d roi) {
 }
 
 bool objectTrackingRateThread::checkLogDirectory() {
-    struct stat st;
+    struct stat st{};
     const string image_dir = this->logPath + "/images";
     return (stat(this->logPath.c_str(), &st) == 0 && stat(image_dir.c_str(), &st) == 0);
 
@@ -553,7 +548,9 @@ void objectTrackingRateThread::incrementInteractionCounter() {
 
 }
 
-void objectTrackingRateThread::getAnglesHead(double &azimuth, double &elevation, double &vergence) {
+void objectTrackingRateThread::getAnglesHead(
+
+        ) {
     if (anglePositionPort.getInputCount()) {
         Bottle *anglesBottle = anglePositionPort.read();
 
