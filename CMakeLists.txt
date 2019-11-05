@@ -30,14 +30,16 @@ include(ICUBcontribOptions)
 icubcontrib_set_default_prefix()
 set(ICUB_APPLICATIONS_PREFIX "$ENV{ICUB_ROOT}" CACHE PATH "Application path prefix")
 
+find_library(OpenTracker_LIBS  libopentracker.so /home/icub/Documents/OpenTracker/build/lib)
+
+
 #search for includes
 INCLUDE_DIRECTORIES(
         ${PROJECT_SOURCE_DIR}/include
         ${YARP_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
-        ${OpenTracker_INCLUDE_DIR}
-        /home/jonas/yarp/src/libYARP_cv/include
-
+        /usr/local/src/robot/yarp/src/libYARP_cv/include
+        /home/icub/Documents/OpenTracker
 
 )
 
