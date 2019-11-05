@@ -389,6 +389,7 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat &t_image, cv::Rect2d &
         t_ROITrackResult.height = ecoBox.height ;
 
 
+
     }
 
     return ret;
