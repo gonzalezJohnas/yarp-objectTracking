@@ -133,7 +133,7 @@ private :
 
 
     yarp::os::BufferedPort <yarp::os::Bottle> inputTargetCoordinate;                                //
-    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageInputPort;                                // input template Image  of the object to track
+    yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelRgb> > templateImageInputPort;                                // input template Image  of the object to track
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > templateImageOutputPort;                                // input template Image  of the object to track
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > trackerOutputPort;                                // output Image with the ROI tracked
     yarp::os::BufferedPort <yarp::sig::ImageOf<yarp::sig::PixelBgr> > inputImagePort;

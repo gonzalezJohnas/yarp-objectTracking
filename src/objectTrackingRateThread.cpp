@@ -29,8 +29,7 @@
 #include <sys/stat.h>
 #include <yarp/cv/Cv.h>
 
-#include "eco/eco.hpp"
-#include "eco/parameters.hpp"
+
 
 using namespace yarp::dev;
 using namespace yarp::os;
@@ -56,7 +55,7 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
                      "robot name (string)").asString();;
 
     trackerType = rf.check("trackerType",
-                           Value("ECO"),
+                           Value("KF-EBT"),
                            "tracker type (string)").asString();
 
     enableSaccade = rf.check("saccade", Value(false)).asBool();
@@ -69,10 +68,10 @@ objectTrackingRateThread::objectTrackingRateThread(yarp::os::ResourceFinder &rf)
                              Value("0"),
                              "driving camera (string)").asInt();
 
-    const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(5.0)).asDouble();
+    const double thresholdUncertaintyTracker = rf.check("threshold_tracker", Value(8)).asDouble();
     kalmanFilterEnsembleBasedTracker.setThresholdUncertainty(thresholdUncertaintyTracker);
 
-//    ecoParameters.max_score_threshhold = 0.15;
+    ecoParameters.max_score_threshhold = 0.15;
 
     azimuth = -99;
     elevation = -99;
@@ -122,7 +121,7 @@ bool objectTrackingRateThread::threadInit() {
     setTracker();
     trackingState = false;
 
-    previousImagePosX = .0;
+    previousImagePosX = 0;
     previousImagePosY = 0;
 
     yInfo("Initialization of the processing thread correctly ended");
@@ -251,7 +250,7 @@ void objectTrackingRateThread::setTracker() {
         tracker = TrackerGOTURN::create();
 
     if (trackerType == "KF-EBT") {
-        kalmanFilterEnsembleBasedTracker.init("ACK");
+        kalmanFilterEnsembleBasedTracker.init("AVK");
         yInfo("Using ensemble based tracker with threshold uncertainty %f",
               kalmanFilterEnsembleBasedTracker.getThresholdUncertainty());
 
@@ -280,6 +279,7 @@ bool objectTrackingRateThread::openIkinGazeCtrl() {
 
     clientGaze->view(iGaze);
     iGaze->storeContext(&ikinGazeCtrl_Startcontext);
+
 
 
     iGaze->setSaccadesMode(enableSaccade);
@@ -313,7 +313,14 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d &t_trackZone) 
     imageFramePosition[1] = imagePositionY;
 
     // On the 3D frame reference of the robot the X axis is the depth
-    iGaze->get3DPoint(0, imageFramePosition, 1.0, rootFramePosition);
+    iGaze->get3DPoint(0, imageFramePosition, 0.7, rootFramePosition);
+
+    if(    previousImagePosX <= 0){
+
+        previousImagePosX = imagePositionX;
+        previousImagePosY = imagePositionY;
+    }
+
 
     // Calcul the Euclidian distance in image plane
     const double distancePreviousCurrent = sqrt(
@@ -321,17 +328,20 @@ bool objectTrackingRateThread::trackIkinGazeCtrl(const cv::Rect2d &t_trackZone) 
 
     yInfo("Distance is %f", distancePreviousCurrent);
 
+
+
     previousImagePosX = imagePositionX;
     previousImagePosY = imagePositionY;
 
-    if (distancePreviousCurrent > 20 ) {
+    if (distancePreviousCurrent > 3.3 ) {
 
         // Storing the previous coordinate in the Robot frame reference
 
-        yInfo("Position  is %f %f %f", rootFramePosition[0], rootFramePosition[1], rootFramePosition[2]);
-//        iGaze->lookAtFixationPoint(rootFramePosition);
 
-        iGaze->lookAtMonoPixel(drivingCamera, imageFramePosition );
+        yInfo("Position  is %f %f %f", rootFramePosition[0], rootFramePosition[1], rootFramePosition[2]);
+        iGaze->lookAtFixationPoint(rootFramePosition);
+
+//        iGaze->lookAtMonoPixel(drivingCamera, imageFramePosition );
 
        return true;
 
@@ -350,20 +360,22 @@ bool objectTrackingRateThread::initializeTracker(const cv::Mat t_image, const cv
     if (trackerType == "KF-EBT") {
 
         kalmanFilterEnsembleBasedTracker.initTrackers(t_image, t_ROIToTrack);
-        trackingState = true;
     }
 
 
     else if (trackerType == "ECO"){
         ecotracker.init(const_cast<Mat &>(t_image), t_ROIToTrack, ecoParameters);
-        trackingState = true;
 
     }
     else {
         tracker->init(t_image, t_ROIToTrack);
-        trackingState = true;
 
     }
+
+    trackingState = true;
+
+
+
     return false;
 }
 
@@ -381,12 +393,33 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat &t_image, cv::Rect2d &
     }
 
     else if (trackerType == "ECO"){
-        cv::Rect2f ecoBox;
-        ret = ecotracker.update(t_image, ecoBox);
-        t_ROITrackResult.x = ecoBox.x ;
-        t_ROITrackResult.y = ecoBox.y ;
-        t_ROITrackResult.width = ecoBox.width;
-        t_ROITrackResult.height = ecoBox.height ;
+        try{
+
+            cv::Rect2f ecoBox;
+            ret = ecotracker.update(t_image, ecoBox);
+
+            if(ecoBox.empty()){
+                yError("Eco return empty box");
+                trackingState = false;
+
+            }
+
+            else{
+
+                t_ROITrackResult.x = ecoBox.x ;
+                t_ROITrackResult.y = ecoBox.y ;
+                t_ROITrackResult.width = ecoBox.width;
+                t_ROITrackResult.height = ecoBox.height ;
+            }
+
+        }
+
+        catch (cv::Exception& e ){
+                yError("Here is the problem");
+                trackingState = false;
+
+        }
+
 
 
 
@@ -399,8 +432,9 @@ bool objectTrackingRateThread::trackingPrediction(cv::Mat &t_image, cv::Rect2d &
 
 bool objectTrackingRateThread::setTemplateFromImage() {
 
-    if ( inputImagePort.getInputCount()) {
-        ImageOf<yarp::sig::PixelBgr> *yarp_templateImage = templateImageInputPort.read(true);
+
+    ImageOf<yarp::sig::PixelRgb> *yarp_templateImage = templateImageInputPort.read(false);
+    if ( inputImagePort.getInputCount() && yarp_templateImage != nullptr) {
         const cv::Mat templateMat = yarp::cv::toCvMat(*yarp_templateImage);
 
 
@@ -489,6 +523,9 @@ void objectTrackingRateThread::stopTracking() {
         iGaze->lookAtAbsAngles(anglesHome);
 
     }
+
+    previousImagePosX = -1;
+    previousImagePosY = -1;
 }
 
 void objectTrackingRateThread::setEnable_log(bool enable_log) {
@@ -549,9 +586,7 @@ void objectTrackingRateThread::incrementInteractionCounter() {
 
 }
 
-void objectTrackingRateThread::getAnglesHead(
-
-        ) {
+void objectTrackingRateThread::getAnglesHead() {
     if (anglePositionPort.getInputCount()) {
         Bottle *anglesBottle = anglePositionPort.read();
 
